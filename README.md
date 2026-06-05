@@ -1,6 +1,8 @@
 # FireDrone Project
+
 https://www.tinyurl.com/xavstev
-A fire drone monitoring system with a **Flask** backend API and a **Flutter** mobile app.
+
+A fire drone monitoring system with a **Flask** backend API, the original **Flutter** mobile app, and a new **AeroScout Sim** Flutter web prototype based on the project design slides.
 
 ## Project Structure
 
@@ -12,6 +14,7 @@ FireDroneProject/
 │   ├── config.py     # Configuration
 │   ├── run.py        # Entry point
 │   └── requirements.txt
+├── flutter_app/      # AeroScout Sim Flutter web prototype
 ├── mobile/           # Flutter mobile app
 │   └── lib/          # Dart source code
 └── README.md
@@ -59,6 +62,16 @@ flutter pub get
 ```bash
 flutter run
 ```
+
+### AeroScout Sim Flutter Web Prototype
+
+```bash
+cd flutter_app
+flutter pub get
+flutter run
+```
+
+The new Flutter prototype includes dashboards for analytics, drone fleet status, scenario planning, and a live simulator view. Scenario and hero decorations use generated wildfire patrol landscape images in `flutter_app/assets/images/`.
 
 ## Development Notes
 
