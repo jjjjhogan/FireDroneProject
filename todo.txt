@@ -1,0 +1,8 @@
+1. The live simulator will show map data from a chosen location. 
+
+2. When you press start run it will start the simulation from start to end.
+
+3. The simulation points can be moved on the map.
+
+4. Data on the bottom buttons will change as the point moves throughout the map.
+
