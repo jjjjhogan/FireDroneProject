@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-enum SimulationPointType { drone, checkpoint, hazard }
+enum RoutePointRole { start, checkpoint, end }
 
-class SimulationPoint {
-  SimulationPoint({
+class RoutePoint {
+  RoutePoint({
     required this.id,
-    required this.type,
+    required this.role,
     required this.label,
     required this.normalizedPosition,
     required this.windMph,
@@ -14,17 +14,17 @@ class SimulationPoint {
   });
 
   final String id;
-  final SimulationPointType type;
+  final RoutePointRole role;
   final String label;
   Offset normalizedPosition;
   final double windMph;
   final int humidityPct;
   final int coveragePct;
 
-  SimulationPoint copyWith({Offset? normalizedPosition}) {
-    return SimulationPoint(
+  RoutePoint copyWith({Offset? normalizedPosition}) {
+    return RoutePoint(
       id: id,
-      type: type,
+      role: role,
       label: label,
       normalizedPosition: normalizedPosition ?? this.normalizedPosition,
       windMph: windMph,

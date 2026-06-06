@@ -31,8 +31,9 @@ void main() {
     await tester.pump();
 
     expect(find.text('Live Simulator'), findsWidgets);
-    expect(find.text('Active point'), findsOneWidget);
-    expect(find.text('Drag points to adjust patrol route'), findsOneWidget);
+    expect(find.text('Run status'), findsOneWidget);
+    expect(find.text('Start run'), findsOneWidget);
+    expect(find.text('Fire zone is independent of patrol route'), findsOneWidget);
   });
 
   testWidgets('AeroScout scenario library fits compact mobile width', (

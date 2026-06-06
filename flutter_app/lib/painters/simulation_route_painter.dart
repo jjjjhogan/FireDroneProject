@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
 
-import '../models/simulation_point.dart';
+import '../../models/route_point.dart';
+import '../../models/thermal_front.dart';
+import '../../utils/route_geometry.dart';
 
 class SimulationRoutePainter extends CustomPainter {
   SimulationRoutePainter({
-    required this.points,
-    required this.hazardPoint,
+    required this.routePoints,
+    required this.thermalFront,
+    this.playbackPosition,
   });
 
-  final List<SimulationPoint> points;
-  final SimulationPoint? hazardPoint;
+  final List<RoutePoint> routePoints;
+  final ThermalFront thermalFront;
+  final Offset? playbackPosition;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final background = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0x44ffffff), Color(0x11ffffff)],
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, background);
-
     final grid = Paint()
       ..color = const Color(0x88d9e6e1)
       ..strokeWidth = 1;
@@ -29,57 +27,112 @@ class SimulationRoutePainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
 
-    if (hazardPoint != null) {
-      final hazardCenter = Offset(
-        hazardPoint!.normalizedPosition.dx * size.width,
-        hazardPoint!.normalizedPosition.dy * size.height,
-      );
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: hazardCenter,
-          width: size.width * 0.28,
-          height: size.height * 0.42,
-        ),
-        Paint()..color = const Color(0x44f05d2f),
-      );
+    final hazardCenter = Offset(
+      thermalFront.normalizedPosition.dx * size.width,
+      thermalFront.normalizedPosition.dy * size.height,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: hazardCenter,
+        width: size.width * thermalFront.normalizedRadiusX * 2,
+        height: size.height * thermalFront.normalizedRadiusY * 2,
+      ),
+      Paint()..color = const Color(0x55f05d2f),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: hazardCenter,
+        width: size.width * thermalFront.normalizedRadiusX * 2,
+        height: size.height * thermalFront.normalizedRadiusY * 2,
+      ),
+      Paint()
+        ..color = const Color(0xffc2542d)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+
+    if (routePoints.length >= 2) {
+      for (var i = 0; i < routePoints.length - 1; i++) {
+        final start = Offset(
+          routePoints[i].normalizedPosition.dx * size.width,
+          routePoints[i].normalizedPosition.dy * size.height,
+        );
+        final end = Offset(
+          routePoints[i + 1].normalizedPosition.dx * size.width,
+          routePoints[i + 1].normalizedPosition.dy * size.height,
+        );
+        final crossesFire = RouteGeometry.segmentCrossesThermalFront(
+          routePoints[i].normalizedPosition,
+          routePoints[i + 1].normalizedPosition,
+          thermalFront,
+        );
+        canvas.drawLine(
+          start,
+          end,
+          Paint()
+            ..color = crossesFire
+                ? const Color(0xffd94848)
+                : const Color(0xff0e7656)
+            ..strokeWidth = 4
+            ..strokeCap = StrokeCap.round,
+        );
+      }
     }
 
-    if (points.length >= 2) {
-      final route = Path();
-      for (var i = 0; i < points.length; i++) {
-        final offset = Offset(
-          points[i].normalizedPosition.dx * size.width,
-          points[i].normalizedPosition.dy * size.height,
-        );
-        if (i == 0) {
-          route.moveTo(offset.dx, offset.dy);
-        } else {
-          route.lineTo(offset.dx, offset.dy);
-        }
-      }
-      canvas.drawPath(
-        route,
+    if (playbackPosition != null) {
+      final droneCenter = Offset(
+        playbackPosition!.dx * size.width,
+        playbackPosition!.dy * size.height,
+      );
+      canvas.drawCircle(
+        droneCenter,
+        16,
+        Paint()..color = const Color(0x440e7656),
+      );
+      canvas.drawCircle(
+        droneCenter,
+        10,
+        Paint()..color = Colors.white,
+      );
+      canvas.drawCircle(
+        droneCenter,
+        10,
         Paint()
-          ..color = const Color(0xff0e7656)
-          ..strokeWidth = 4
+          ..color = const Color(0xff10231d)
           ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round,
+          ..strokeWidth = 2,
+      );
+      final arm = Paint()
+        ..color = const Color(0xff10231d)
+        ..strokeWidth = 2;
+      canvas.drawLine(
+        droneCenter.translate(-14, 0),
+        droneCenter.translate(14, 0),
+        arm,
+      );
+      canvas.drawLine(
+        droneCenter.translate(0, -14),
+        droneCenter.translate(0, 14),
+        arm,
       );
     }
   }
 
   @override
   bool shouldRepaint(covariant SimulationRoutePainter oldDelegate) {
-    if (oldDelegate.points.length != points.length) {
+    if (oldDelegate.playbackPosition != playbackPosition) {
       return true;
     }
-    for (var i = 0; i < points.length; i++) {
-      if (oldDelegate.points[i].normalizedPosition !=
-          points[i].normalizedPosition) {
+    if (oldDelegate.routePoints.length != routePoints.length) {
+      return true;
+    }
+    for (var i = 0; i < routePoints.length; i++) {
+      if (oldDelegate.routePoints[i].normalizedPosition !=
+          routePoints[i].normalizedPosition) {
         return true;
       }
     }
-    return oldDelegate.hazardPoint?.normalizedPosition !=
-        hazardPoint?.normalizedPosition;
+    return oldDelegate.thermalFront.normalizedPosition !=
+        thermalFront.normalizedPosition;
   }
 }

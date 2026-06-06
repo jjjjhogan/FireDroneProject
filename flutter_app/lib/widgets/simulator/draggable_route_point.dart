@@ -1,33 +1,35 @@
 import 'package:flutter/material.dart';
 
-import '../../models/simulation_point.dart';
+import '../../models/route_point.dart';
 
-class DraggableSimulationPoint extends StatelessWidget {
-  const DraggableSimulationPoint({
+class DraggableRoutePoint extends StatelessWidget {
+  const DraggableRoutePoint({
     required this.point,
     required this.isSelected,
     required this.mapSize,
+    required this.draggable,
     required this.onSelect,
     required this.onMoved,
     super.key,
   });
 
-  final SimulationPoint point;
+  final RoutePoint point;
   final bool isSelected;
   final Size mapSize;
+  final bool draggable;
   final VoidCallback onSelect;
   final ValueChanged<Offset> onMoved;
 
-  Color get _color => switch (point.type) {
-        SimulationPointType.drone => const Color(0xff10231d),
-        SimulationPointType.checkpoint => const Color(0xff0e7656),
-        SimulationPointType.hazard => const Color(0xffc2542d),
+  Color get _color => switch (point.role) {
+        RoutePointRole.start => const Color(0xff10231d),
+        RoutePointRole.checkpoint => const Color(0xff0e7656),
+        RoutePointRole.end => const Color(0xff2f7d9a),
       };
 
-  IconData get _icon => switch (point.type) {
-        SimulationPointType.drone => Icons.flight,
-        SimulationPointType.checkpoint => Icons.flag_outlined,
-        SimulationPointType.hazard => Icons.local_fire_department_outlined,
+  IconData get _icon => switch (point.role) {
+        RoutePointRole.start => Icons.play_arrow_rounded,
+        RoutePointRole.checkpoint => Icons.flag_outlined,
+        RoutePointRole.end => Icons.stop_rounded,
       };
 
   @override
@@ -40,20 +42,24 @@ class DraggableSimulationPoint extends StatelessWidget {
       top: top.clamp(0, mapSize.height - 36),
       child: GestureDetector(
         onTap: onSelect,
-        onPanUpdate: (details) {
-          final next = Offset(
-            (point.normalizedPosition.dx * mapSize.width + details.delta.dx) /
-                mapSize.width,
-            (point.normalizedPosition.dy * mapSize.height + details.delta.dy) /
-                mapSize.height,
-          );
-          onMoved(
-            Offset(
-              next.dx.clamp(0.04, 0.96),
-              next.dy.clamp(0.04, 0.96),
-            ),
-          );
-        },
+        onPanUpdate: draggable
+            ? (details) {
+                final next = Offset(
+                  (point.normalizedPosition.dx * mapSize.width +
+                          details.delta.dx) /
+                      mapSize.width,
+                  (point.normalizedPosition.dy * mapSize.height +
+                          details.delta.dy) /
+                      mapSize.height,
+                );
+                onMoved(
+                  Offset(
+                    next.dx.clamp(0.04, 0.96),
+                    next.dy.clamp(0.04, 0.96),
+                  ),
+                );
+              }
+            : null,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -80,7 +86,8 @@ class DraggableSimulationPoint extends StatelessWidget {
             if (isSelected) ...[
               const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(999),

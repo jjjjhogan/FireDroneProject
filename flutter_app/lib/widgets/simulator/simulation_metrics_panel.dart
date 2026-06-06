@@ -1,43 +1,49 @@
 import 'package:flutter/material.dart';
 
-import '../../models/simulation_point.dart';
+import '../../models/simulation_layout.dart';
 import '../common/metric_card.dart';
 import '../common/responsive_grid.dart';
 
 class SimulationMetricsPanel extends StatelessWidget {
   const SimulationMetricsPanel({
     required this.scenarioName,
-    required this.activePoint,
+    required this.runState,
+    required this.telemetry,
     super.key,
   });
 
   final String scenarioName;
-  final SimulationPoint? activePoint;
+  final SimulationRunState runState;
+  final SimulationTelemetry telemetry;
+
+  String get _runStatus => switch (runState) {
+        SimulationRunState.idle => 'Ready',
+        SimulationRunState.running => 'Running',
+        SimulationRunState.paused => 'Paused',
+        SimulationRunState.complete => 'Complete',
+      };
 
   @override
   Widget build(BuildContext context) {
-    final point = activePoint;
-
     return ResponsiveGrid(
       children: [
         MetricCard(
-          label: 'Active point',
-          value: point?.label ?? 'None selected',
-          detail: scenarioName,
+          label: 'Run status',
+          value: _runStatus,
+          detail: '${telemetry.progressPct}% · $scenarioName',
         ),
         MetricCard(
-          label: 'Coverage',
-          value: point != null ? '${point.coveragePct}%' : '--',
-          detail: point != null
-              ? 'Sector at ${(point.normalizedPosition.dx * 100).round()}% east'
-              : 'Select or drag a point',
+          label: 'Route vs fire',
+          value: telemetry.routeCrossesFire ? 'Crosses fire' : 'Clear path',
+          detail: telemetry.routeCrossesFire
+              ? 'Patrol line intersects thermal front'
+              : 'Route avoids thermal zone',
         ),
         MetricCard(
-          label: 'Wind / RH',
-          value: point != null
-              ? '${point.windMph.round()} mph'
-              : '--',
-          detail: point != null ? '${point.humidityPct}% humidity' : '--',
+          label: 'Live telemetry',
+          value: telemetry.label,
+          detail:
+              '${telemetry.windMph.round()} mph · ${telemetry.humidityPct}% RH · ${telemetry.coveragePct}% coverage',
         ),
       ],
     );

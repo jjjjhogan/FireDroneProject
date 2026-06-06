@@ -1,27 +1,52 @@
 import 'package:flutter/material.dart';
 
-import '../../models/scenario.dart';
-import '../../models/simulation_point.dart';
+import '../../models/simulation_layout.dart';
 import '../../painters/simulation_route_painter.dart';
 import '../common/info_card.dart';
 import '../common/status_pill.dart';
-import 'draggable_simulation_point.dart';
+import 'draggable_route_point.dart';
+import 'draggable_thermal_front.dart';
+import 'simulation_controls.dart';
 
 class SimulatorMap extends StatefulWidget {
   const SimulatorMap({
-    required this.scenario,
-    required this.points,
-    required this.selectedPointId,
-    required this.onPointMoved,
-    required this.onPointSelected,
+    required this.scenarioName,
+    required this.scenarioColor,
+    required this.scenarioImage,
+    required this.layout,
+    required this.runState,
+    required this.progress,
+    required this.playbackPosition,
+    required this.selectedRoutePointId,
+    required this.thermalFrontSelected,
+    required this.editingEnabled,
+    required this.onStartRun,
+    required this.onPauseRun,
+    required this.onResetRun,
+    required this.onRoutePointMoved,
+    required this.onThermalFrontMoved,
+    required this.onRoutePointSelected,
+    required this.onThermalFrontSelected,
     super.key,
   });
 
-  final Scenario scenario;
-  final List<SimulationPoint> points;
-  final String? selectedPointId;
-  final void Function(String pointId, Offset normalizedPosition) onPointMoved;
-  final ValueChanged<String> onPointSelected;
+  final String scenarioName;
+  final Color scenarioColor;
+  final String scenarioImage;
+  final SimulationLayout layout;
+  final SimulationRunState runState;
+  final double progress;
+  final Offset? playbackPosition;
+  final String? selectedRoutePointId;
+  final bool thermalFrontSelected;
+  final bool editingEnabled;
+  final VoidCallback onStartRun;
+  final VoidCallback onPauseRun;
+  final VoidCallback onResetRun;
+  final void Function(String pointId, Offset normalizedPosition) onRoutePointMoved;
+  final ValueChanged<Offset> onThermalFrontMoved;
+  final ValueChanged<String> onRoutePointSelected;
+  final VoidCallback onThermalFrontSelected;
 
   @override
   State<SimulatorMap> createState() => _SimulatorMapState();
@@ -29,15 +54,6 @@ class SimulatorMap extends StatefulWidget {
 
 class _SimulatorMapState extends State<SimulatorMap> {
   Size _mapSize = Size.zero;
-
-  SimulationPoint? get _hazardPoint {
-    for (final point in widget.points) {
-      if (point.type == SimulationPointType.hazard) {
-        return point;
-      }
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,10 +69,9 @@ class _SimulatorMapState extends State<SimulatorMap> {
                 children: [
                   Positioned.fill(
                     child: Image.asset(
-                      widget.scenario.image,
+                      widget.scenarioImage,
                       fit: BoxFit.cover,
-                      semanticLabel:
-                          'Map terrain for ${widget.scenario.name}',
+                      semanticLabel: 'Map terrain for ${widget.scenarioName}',
                     ),
                   ),
                   Positioned.fill(
@@ -76,8 +91,9 @@ class _SimulatorMapState extends State<SimulatorMap> {
                   Positioned.fill(
                     child: CustomPaint(
                       painter: SimulationRoutePainter(
-                        points: widget.points,
-                        hazardPoint: _hazardPoint,
+                        routePoints: widget.layout.routePoints,
+                        thermalFront: widget.layout.thermalFront,
+                        playbackPosition: widget.playbackPosition,
                       ),
                     ),
                   ),
@@ -85,27 +101,49 @@ class _SimulatorMapState extends State<SimulatorMap> {
                     left: 16,
                     top: 16,
                     child: StatusPill(
-                      label: widget.scenario.name,
-                      color: widget.scenario.color,
+                      label: widget.scenarioName,
+                      color: widget.scenarioColor,
                     ),
                   ),
                   Positioned(
                     left: 16,
-                    bottom: 16,
+                    top: 52,
                     child: StatusPill(
-                      label: 'Drag points to adjust patrol route',
-                      color: const Color(0xe6ffffff),
+                      label: 'Fire zone is independent of patrol route',
+                      color: const Color(0xe6fff4ef),
                     ),
                   ),
-                  for (final point in widget.points)
-                    DraggableSimulationPoint(
+                  for (final point in widget.layout.routePoints)
+                    DraggableRoutePoint(
                       point: point,
-                      isSelected: widget.selectedPointId == point.id,
+                      isSelected: widget.selectedRoutePointId == point.id &&
+                          !widget.thermalFrontSelected,
                       mapSize: _mapSize,
-                      onSelect: () => widget.onPointSelected(point.id),
+                      draggable: widget.editingEnabled,
+                      onSelect: () => widget.onRoutePointSelected(point.id),
                       onMoved: (position) =>
-                          widget.onPointMoved(point.id, position),
+                          widget.onRoutePointMoved(point.id, position),
                     ),
+                  DraggableThermalFront(
+                    thermalFront: widget.layout.thermalFront,
+                    isSelected: widget.thermalFrontSelected,
+                    mapSize: _mapSize,
+                    draggable: widget.editingEnabled,
+                    onSelect: widget.onThermalFrontSelected,
+                    onMoved: widget.onThermalFrontMoved,
+                  ),
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
+                    child: SimulationControls(
+                      runState: widget.runState,
+                      progress: widget.progress,
+                      onStart: widget.onStartRun,
+                      onPause: widget.onPauseRun,
+                      onReset: widget.onResetRun,
+                    ),
+                  ),
                 ],
               ),
             ),
