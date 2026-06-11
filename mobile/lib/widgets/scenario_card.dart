@@ -88,6 +88,13 @@ class _ScenarioImageHeader extends StatelessWidget {
               ),
             ),
           ),
+          if (scenario.image != null)
+            Image.asset(
+              scenario.image!,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const SizedBox.shrink(),
+            ),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

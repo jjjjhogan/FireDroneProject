@@ -2,11 +2,53 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+class NavSectionData {
+  const NavSectionData({required this.label, required this.items});
+
+  final String label;
+  final List<NavItemData> items;
+}
+
+class NavItemData {
+  const NavItemData({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+}
+
+const sidebarSections = [
+  NavSectionData(
+    label: 'WORKSPACE',
+    items: [
+      NavItemData(icon: Icons.dashboard_outlined, label: 'Dashboard'),
+      NavItemData(icon: Icons.play_circle_outline, label: 'Live Simulator'),
+      NavItemData(icon: Icons.map_outlined, label: 'Scenarios'),
+      NavItemData(icon: Icons.flight_outlined, label: 'Drone Fleet'),
+    ],
+  ),
+  NavSectionData(
+    label: 'INSIGHTS',
+    items: [
+      NavItemData(icon: Icons.bar_chart_outlined, label: 'Analytics'),
+      NavItemData(icon: Icons.route_outlined, label: 'Fleet Planning'),
+    ],
+  ),
+];
+
 class AppSidebar extends StatelessWidget {
-  const AppSidebar({super.key});
+  const AppSidebar({
+    super.key,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
+    var runningIndex = 0;
+
     return Container(
       width: 240,
       decoration: const BoxDecoration(
@@ -21,27 +63,34 @@ class AppSidebar extends StatelessWidget {
           const SizedBox(height: 24),
           const _BrandHeader(),
           const SizedBox(height: 32),
-          const _NavSection(
-            label: 'WORKSPACE',
-            items: [
-              _NavItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
-              _NavItem(icon: Icons.play_circle_outline, label: 'Live Simulator'),
-              _NavItem(
-                icon: Icons.map_outlined,
-                label: 'Scenarios',
-                isActive: true,
-              ),
-              _NavItem(icon: Icons.flight_outlined, label: 'Drone Fleet'),
-            ],
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                for (final section in sidebarSections) ...[
+                  _NavSection(
+                    label: section.label,
+                    children: [
+                      for (final item in section.items)
+                        Builder(
+                          builder: (context) {
+                            final index = runningIndex++;
+                            return _NavItemTile(
+                              item: item,
+                              isActive: index == selectedIndex,
+                              onTap: () => onSelect(index),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
-          const _NavSection(
-            label: 'INSIGHTS',
-            items: [
-              _NavItem(icon: Icons.bar_chart_outlined, label: 'Analytics'),
-              _NavItem(icon: Icons.route_outlined, label: 'Fleet Planning'),
-            ],
-          ),
+          const _ResearchModeBadge(),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -102,10 +151,10 @@ class _BrandHeader extends StatelessWidget {
 }
 
 class _NavSection extends StatelessWidget {
-  const _NavSection({required this.label, required this.items});
+  const _NavSection({required this.label, required this.children});
 
   final String label;
-  final List<_NavItem> items;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
@@ -125,70 +174,111 @@ class _NavSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        ...items.map((item) => _NavItemTile(item: item)),
+        ...children,
       ],
     );
   }
 }
 
-class _NavItem {
-  const _NavItem({
-    this.icon,
-    required this.label,
-    this.isActive = false,
+class _NavItemTile extends StatelessWidget {
+  const _NavItemTile({
+    required this.item,
+    required this.isActive,
+    required this.onTap,
   });
 
-  final IconData? icon;
-  final String label;
+  final NavItemData item;
   final bool isActive;
-}
-
-class _NavItemTile extends StatelessWidget {
-  const _NavItemTile({required this.item});
-
-  final _NavItem item;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 12,
-        right: 12,
-        bottom: 2,
-      ),
+      padding: const EdgeInsets.only(left: 12, right: 12, bottom: 2),
       child: Material(
-        color: item.isActive ? AppColors.primaryLight : Colors.transparent,
+        color: isActive ? AppColors.primaryLight : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Row(
-            children: [
-              if (item.icon != null) ...[
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            child: Row(
+              children: [
                 Icon(
                   item.icon,
                   size: 18,
-                  color: item.isActive
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
+                  color:
+                      isActive ? AppColors.primary : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: Text(
-                  item.label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight:
-                        item.isActive ? FontWeight.w600 : FontWeight.w400,
-                    color: item.isActive
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
+                Expanded(
+                  child: Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight:
+                          isActive ? FontWeight.w600 : FontWeight.w400,
+                      color: isActive
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ResearchModeBadge extends StatelessWidget {
+  const _ResearchModeBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.science_outlined,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Research Mode',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Runs are CPU-simulated. No physical drones required.',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
         ),
       ),
     );

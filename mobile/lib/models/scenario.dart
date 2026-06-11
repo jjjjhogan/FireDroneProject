@@ -13,6 +13,7 @@ class Scenario {
     required this.fwiLevel,
     required this.terrain,
     required this.imageGradient,
+    this.image,
   });
 
   final String title;
@@ -24,6 +25,7 @@ class Scenario {
   final FwiLevel fwiLevel;
   final String terrain;
   final List<Color> imageGradient;
+  final String? image;
 }
 
 const mockScenarios = [
@@ -38,6 +40,7 @@ const mockScenarios = [
     fwiLevel: FwiLevel.high,
     terrain: 'Mountain',
     imageGradient: [Color(0xFF4A6741), Color(0xFF8B9A6B)],
+    image: 'assets/images/scenario-mountain.jpg',
   ),
   Scenario(
     title: 'Loess Plateau · Shaanxi',
@@ -50,6 +53,7 @@ const mockScenarios = [
     fwiLevel: FwiLevel.med,
     terrain: 'Plateau',
     imageGradient: [Color(0xFFB8956A), Color(0xFFD4B896)],
+    image: 'assets/images/scenario-plateau.jpg',
   ),
   Scenario(
     title: 'Coastal Range · Fujian',
@@ -62,6 +66,7 @@ const mockScenarios = [
     fwiLevel: FwiLevel.low,
     terrain: 'Coastal',
     imageGradient: [Color(0xFF3D6B7A), Color(0xFF6B9AAA)],
+    image: 'assets/images/scenario-coastal.jpg',
   ),
   Scenario(
     title: 'Daxing\'anling · Heilongjiang',
@@ -74,6 +79,7 @@ const mockScenarios = [
     fwiLevel: FwiLevel.low,
     terrain: 'Mixed',
     imageGradient: [Color(0xFF2E4A3E), Color(0xFF5A7A6A)],
+    image: 'assets/images/scenario-boreal.jpg',
   ),
   Scenario(
     title: 'Qilian Mountains · Gansu',
@@ -86,5 +92,6 @@ const mockScenarios = [
     fwiLevel: FwiLevel.high,
     terrain: 'Mountain',
     imageGradient: [Color(0xFF5C6B73), Color(0xFF9AA5AD)],
+    image: 'assets/images/scenario-mountain.jpg',
   ),
 ];

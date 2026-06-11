@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/scenario.dart';
 import '../theme/app_theme.dart';
-import '../widgets/app_sidebar.dart';
 import '../widgets/scenario_card.dart';
 
 const _scenarioFilters = ['All (12)', 'Mountain', 'Plateau', 'Coastal'];
@@ -19,38 +18,29 @@ class _ScenarioLibraryScreenState extends State<ScenarioLibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          const AppSidebar(),
-          Expanded(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _TopBar(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(32, 8, 32, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _TopBar(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(32, 8, 32, 32),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionHeader(
-                          selectedFilter: _selectedFilter,
-                          onFilterChanged: (index) {
-                            setState(() => _selectedFilter = index);
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        _ScenarioGrid(),
-                      ],
-                    ),
-                  ),
+                _SectionHeader(
+                  selectedFilter: _selectedFilter,
+                  onFilterChanged: (index) {
+                    setState(() => _selectedFilter = index);
+                  },
                 ),
+                const SizedBox(height: 24),
+                _ScenarioGrid(),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
