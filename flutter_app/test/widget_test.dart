@@ -17,10 +17,10 @@ void main() {
     await tester.pumpWidget(const AeroScoutApp());
 
     expect(find.text('AeroScout Sim'), findsWidgets);
-    expect(find.text('Scenario Planner'), findsOneWidget);
+    expect(find.text('Cooperative wildfire patrol planning'), findsOneWidget);
     expect(find.text('Scenario Library'), findsWidgets);
-    expect(find.text('Drone Configuration'), findsOneWidget);
-    expect(find.text('Readiness & Coverage'), findsOneWidget);
+    expect(find.text('Pre-built Scenarios'), findsOneWidget);
+    expect(find.text('Open in Simulator'), findsNWidgets(4));
     expect(find.text('Min Mountains · California'), findsWidgets);
 
     await tester.tap(find.text('Coastal'));
@@ -33,7 +33,12 @@ void main() {
     await tester.pump();
 
     expect(find.text('Live Simulator'), findsWidgets);
-    expect(find.text('Run #2417'), findsOneWidget);
+    expect(find.text('Run status'), findsOneWidget);
+    expect(find.text('Start run'), findsOneWidget);
+    expect(
+      find.text('Fire zone is independent of patrol route'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('AeroScout scenario library fits compact mobile width', (
@@ -50,9 +55,9 @@ void main() {
     await tester.pump();
 
     expect(find.text('AeroScout Sim'), findsWidgets);
-    expect(find.text('Scenario Planner'), findsOneWidget);
+    expect(find.text('Cooperative wildfire patrol planning'), findsOneWidget);
     expect(find.text('Scenario Library'), findsWidgets);
-    expect(find.text('Readiness & Coverage'), findsOneWidget);
+    expect(find.text('Pre-built Scenarios'), findsOneWidget);
     expect(find.text('Min Mountains · California'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
