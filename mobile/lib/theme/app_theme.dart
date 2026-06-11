@@ -12,6 +12,12 @@ class AppColors {
   static const Color fwiHigh = Color(0xFFDC2626);
   static const Color fwiMed = Color(0xFFEA580C);
   static const Color fwiLow = Color(0xFF16A34A);
+
+  static const Color chartGreen = Color(0xFF22A06B);
+  static const Color chartBlue = Color(0xFF3B82F6);
+  static const Color chartOrange = Color(0xFFF59E0B);
+  static const Color chartRed = Color(0xFFEF4444);
+  static const Color chartGrey = Color(0xFFB6BCC6);
 }
 
 ThemeData buildAppTheme() {

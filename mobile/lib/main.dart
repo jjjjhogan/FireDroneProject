@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/scenario_library_screen.dart';
+import 'screens/home_shell.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -16,7 +16,7 @@ class AeroScoutApp extends StatelessWidget {
       title: 'AeroScout',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: const ScenarioLibraryScreen(),
+      home: const HomeShell(),
     );
   }
 }
