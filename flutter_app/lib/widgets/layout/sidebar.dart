@@ -17,8 +17,14 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 252,
-      color: const Color(0xff10231d),
+      width: 284,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xff071512), Color(0xff10231d), Color(0xff0f1d1a)],
+        ),
+      ),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(18),
@@ -27,16 +33,16 @@ class Sidebar extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.local_fire_department, color: Color(0xffffc857)),
+                  Icon(Icons.radar, color: Color(0xffffc857)),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'AeroScout Sim',
+                      'AeroScout Command',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -70,12 +76,26 @@ class Sidebar extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xff1b382f),
+                  color: const Color(0xff183229),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xff2b5849)),
                 ),
-                child: const Text(
-                  'Mission planner synced with 12 drone profiles and 4 fire behavior models.',
-                  style: TextStyle(color: Color(0xffc9ddd5), height: 1.35),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DJI Link',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Cloud API and Mobile SDK bridge are reserved. Commands stay locked until manual confirmation.',
+                      style: TextStyle(color: Color(0xffc9ddd5), height: 1.35),
+                    ),
+                  ],
                 ),
               ),
             ],

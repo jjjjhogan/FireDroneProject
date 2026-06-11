@@ -31,7 +31,7 @@ class TopBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AeroScout Sim',
+                  'AeroScout Command',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -40,7 +40,7 @@ class TopBar extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Mission Control',
+                  'DJI-ready wildfire mission control',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -51,7 +51,7 @@ class TopBar extends StatelessWidget {
             ),
           ),
           if (!compact) ...[
-            const StatusPill(label: 'Online', color: Color(0xff12805c)),
+            const StatusPill(label: 'DJI Link', color: Color(0xff12805c)),
             const SizedBox(width: 8),
             IconButton(
               tooltip: 'Notifications',

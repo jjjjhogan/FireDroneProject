@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
 import 'aero_scout_shell.dart';
+import '../services/drone_api_client.dart';
 
 class AeroScoutApp extends StatelessWidget {
-  const AeroScoutApp({super.key});
+  const AeroScoutApp({
+    this.droneClient = const MockDroneApiClient(),
+    super.key,
+  });
+
+  final DroneApiClient droneClient;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AeroScout Sim',
+      title: 'AeroScout Command',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -16,9 +22,10 @@ class AeroScoutApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         fontFamily: 'Arial',
+        scaffoldBackgroundColor: const Color(0xffeef4f1),
         useMaterial3: true,
       ),
-      home: const AeroScoutShell(),
+      home: AeroScoutShell(droneClient: droneClient),
     );
   }
 }

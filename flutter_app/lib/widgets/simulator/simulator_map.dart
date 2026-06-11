@@ -114,6 +114,14 @@ class _SimulatorMapState extends State<SimulatorMap> {
                       color: const Color(0xe6fff4ef),
                     ),
                   ),
+                  const Positioned(
+                    right: 16,
+                    top: 16,
+                    child: StatusPill(
+                      label: 'Live Fire Perimeter',
+                      color: Color(0xffc2542d),
+                    ),
+                  ),
                   for (final point in widget.layout.routePoints)
                     DraggableRoutePoint(
                       point: point,

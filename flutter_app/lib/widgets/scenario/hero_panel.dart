@@ -3,18 +3,26 @@ import 'package:flutter/material.dart';
 import '../common/status_pill.dart';
 
 class HeroPanel extends StatelessWidget {
-  const HeroPanel({required this.title, required this.body, super.key});
+  const HeroPanel({
+    required this.title,
+    required this.body,
+    required this.linkLabel,
+    required this.readiness,
+    super.key,
+  });
 
   final String title;
   final String body;
+  final String linkLabel;
+  final String readiness;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 260,
+      height: 290,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xff142f28),
+          color: const Color(0xff071512),
           borderRadius: BorderRadius.circular(8),
         ),
         clipBehavior: Clip.antiAlias,
@@ -32,30 +40,40 @@ class HeroPanel extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                     colors: [
+                      Color(0xee071512),
+                      Color(0xaa10231d),
                       Color(0x3314231d),
-                      Color(0x9914231d),
-                      Color(0xdd14231d),
                     ],
                   ),
                 ),
               ),
             ),
             Positioned(
-              left: 24,
-              right: 24,
+              left: 26,
+              right: 26,
               bottom: 24,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 650),
+                constraints: const BoxConstraints(maxWidth: 720),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const StatusPill(
-                      label: 'Runbook ready',
-                      color: Color(0xffffc857),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        StatusPill(
+                          label: linkLabel,
+                          color: const Color(0xffffc857),
+                        ),
+                        StatusPill(
+                          label: readiness,
+                          color: const Color(0xffb7f1d8),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     Text(

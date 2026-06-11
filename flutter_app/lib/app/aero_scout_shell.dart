@@ -7,11 +7,14 @@ import '../screens/analytics_page.dart';
 import '../screens/fleet_page.dart';
 import '../screens/live_simulator_screen.dart';
 import '../screens/scenario_library_screen.dart';
+import '../services/drone_api_client.dart';
 import '../widgets/layout/sidebar.dart';
 import '../widgets/layout/top_bar.dart';
 
 class AeroScoutShell extends StatefulWidget {
-  const AeroScoutShell({super.key});
+  const AeroScoutShell({required this.droneClient, super.key});
+
+  final DroneApiClient droneClient;
 
   @override
   State<AeroScoutShell> createState() => _AeroScoutShellState();
@@ -52,19 +55,21 @@ class _AeroScoutShellState extends State<AeroScoutShell> {
         visibleScenarios: _visibleScenarios.toList(),
         onRegionChanged: (region) => setState(() => _region = region),
         onOpenSimulator: _openScenarioInSimulator,
+        droneClient: widget.droneClient,
       ),
       1 => LiveSimulatorScreen(
         scenario: _activeScenario,
+        droneClient: widget.droneClient,
         onScenarioChanged: (scenario) {
           setState(() => _activeScenario = scenario);
         },
       ),
-      2 => const FleetPage(),
-      _ => const AnalyticsPage(),
+      2 => FleetPage(droneClient: widget.droneClient),
+      _ => AnalyticsPage(droneClient: widget.droneClient),
     };
 
     return Scaffold(
-      backgroundColor: const Color(0xfff4f7f5),
+      backgroundColor: const Color(0xffeef4f1),
       body: Row(
         children: [
           if (!compact)

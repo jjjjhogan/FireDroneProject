@@ -47,6 +47,15 @@ The API will be available at `http://127.0.0.1:5000`.
 |-----------------|--------------------|
 | `GET /health`   | Health check       |
 | `GET /api/status` | API status info  |
+| `GET /api/dji/status` | DJI connector status and command gate |
+| `GET /api/dji/fleet` | Mock DJI aircraft fleet feed |
+| `GET /api/dji/telemetry` | Mock telemetry snapshot |
+| `POST /api/dji/missions/preview` | Build a guarded mission preview |
+| `POST /api/dji/missions/confirm` | Confirm mission package; blocked unless `ALLOW_DJI_COMMANDS=true` |
+
+DJI integration defaults to `DRONE_CONNECTOR=mock` and `ALLOW_DJI_COMMANDS=false`.
+The code reserves adapter paths for DJI Cloud API and a future DJI Mobile SDK bridge,
+but live command dispatch remains locked unless the backend safety gate is explicitly enabled.
 
 ## Mobile (Flutter)
 
@@ -71,7 +80,7 @@ flutter pub get
 flutter run
 ```
 
-The new Flutter prototype includes dashboards for analytics, drone fleet status, scenario planning, and a live simulator view. Scenario and hero decorations use generated wildfire patrol landscape images in `flutter_app/assets/images/`.
+The new Flutter prototype includes a DJI-ready mission-control redesign with dashboards for analytics, drone fleet status, scenario planning, guarded mission preview, and live simulator controls. Scenario and hero decorations use generated wildfire patrol landscape images in `flutter_app/assets/images/`.
 
 ## Development Notes
 

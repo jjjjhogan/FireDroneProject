@@ -12,3 +12,5 @@ class Config:
     DEBUG = os.getenv("FLASK_DEBUG", "true").lower() == "true"
     HOST = os.getenv("FLASK_HOST", "127.0.0.1")
     PORT = int(os.getenv("FLASK_PORT", "5000"))
+    DRONE_CONNECTOR = os.getenv("DRONE_CONNECTOR", "mock")
+    ALLOW_DJI_COMMANDS = os.getenv("ALLOW_DJI_COMMANDS", "false").lower() == "true"
