@@ -43,7 +43,8 @@ class SimulatorMap extends StatefulWidget {
   final VoidCallback onStartRun;
   final VoidCallback onPauseRun;
   final VoidCallback onResetRun;
-  final void Function(String pointId, Offset normalizedPosition) onRoutePointMoved;
+  final void Function(String pointId, Offset normalizedPosition)
+  onRoutePointMoved;
   final ValueChanged<Offset> onThermalFrontMoved;
   final ValueChanged<String> onRoutePointSelected;
   final VoidCallback onThermalFrontSelected;
@@ -116,7 +117,8 @@ class _SimulatorMapState extends State<SimulatorMap> {
                   for (final point in widget.layout.routePoints)
                     DraggableRoutePoint(
                       point: point,
-                      isSelected: widget.selectedRoutePointId == point.id &&
+                      isSelected:
+                          widget.selectedRoutePointId == point.id &&
                           !widget.thermalFrontSelected,
                       mapSize: _mapSize,
                       draggable: widget.editingEnabled,

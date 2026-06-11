@@ -21,16 +21,16 @@ class DraggableRoutePoint extends StatelessWidget {
   final ValueChanged<Offset> onMoved;
 
   Color get _color => switch (point.role) {
-        RoutePointRole.start => const Color(0xff10231d),
-        RoutePointRole.checkpoint => const Color(0xff0e7656),
-        RoutePointRole.end => const Color(0xff2f7d9a),
-      };
+    RoutePointRole.start => const Color(0xff10231d),
+    RoutePointRole.checkpoint => const Color(0xff0e7656),
+    RoutePointRole.end => const Color(0xff2f7d9a),
+  };
 
   IconData get _icon => switch (point.role) {
-        RoutePointRole.start => Icons.play_arrow_rounded,
-        RoutePointRole.checkpoint => Icons.flag_outlined,
-        RoutePointRole.end => Icons.stop_rounded,
-      };
+    RoutePointRole.start => Icons.play_arrow_rounded,
+    RoutePointRole.checkpoint => Icons.flag_outlined,
+    RoutePointRole.end => Icons.stop_rounded,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -53,10 +53,7 @@ class DraggableRoutePoint extends StatelessWidget {
                       mapSize.height,
                 );
                 onMoved(
-                  Offset(
-                    next.dx.clamp(0.04, 0.96),
-                    next.dy.clamp(0.04, 0.96),
-                  ),
+                  Offset(next.dx.clamp(0.04, 0.96), next.dy.clamp(0.04, 0.96)),
                 );
               }
             : null,
@@ -86,8 +83,7 @@ class DraggableRoutePoint extends StatelessWidget {
             if (isSelected) ...[
               const SizedBox(height: 4),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(999),

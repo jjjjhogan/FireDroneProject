@@ -62,9 +62,9 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
       _runState == SimulationRunState.complete;
 
   bool get _routeCrossesFire => RouteGeometry.routeCrossesThermalFront(
-        _layout.routePoints,
-        _layout.thermalFront,
-      );
+    _layout.routePoints,
+    _layout.thermalFront,
+  );
 
   Offset? get _playbackPosition {
     if (_runState == SimulationRunState.idle && _progress == 0) {
@@ -89,8 +89,9 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
     _layout = cloneLayout(defaultLayoutForScenario(scenario));
     _progress = 0;
     _runState = SimulationRunState.idle;
-    _selectedRoutePointId =
-        _layout.routePoints.isNotEmpty ? _layout.routePoints.first.id : null;
+    _selectedRoutePointId = _layout.routePoints.isNotEmpty
+        ? _layout.routePoints.first.id
+        : null;
     _thermalFrontSelected = false;
   }
 
@@ -127,8 +128,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
     _lastTick = now;
 
     setState(() {
-      _progress +=
-          elapsed.inMilliseconds / _runDuration.inMilliseconds;
+      _progress += elapsed.inMilliseconds / _runDuration.inMilliseconds;
       if (_progress >= 1) {
         _progress = 1;
         _runState = SimulationRunState.complete;
@@ -145,8 +145,9 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
 
   void _moveRoutePoint(String pointId, Offset normalizedPosition) {
     setState(() {
-      final index =
-          _layout.routePoints.indexWhere((point) => point.id == pointId);
+      final index = _layout.routePoints.indexWhere(
+        (point) => point.id == pointId,
+      );
       if (index == -1) {
         return;
       }
@@ -196,8 +197,8 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
               OutlinedButton.icon(
                 onPressed: _editingEnabled
                     ? () => setState(
-                          () => _loadLayoutForScenario(widget.scenario),
-                        )
+                        () => _loadLayoutForScenario(widget.scenario),
+                      )
                     : null,
                 icon: const Icon(Icons.refresh, size: 18),
                 label: const Text('Reset layout'),

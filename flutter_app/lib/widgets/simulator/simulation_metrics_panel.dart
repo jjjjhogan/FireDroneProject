@@ -17,11 +17,11 @@ class SimulationMetricsPanel extends StatelessWidget {
   final SimulationTelemetry telemetry;
 
   String get _runStatus => switch (runState) {
-        SimulationRunState.idle => 'Ready',
-        SimulationRunState.running => 'Running',
-        SimulationRunState.paused => 'Paused',
-        SimulationRunState.complete => 'Complete',
-      };
+    SimulationRunState.idle => 'Ready',
+    SimulationRunState.running => 'Running',
+    SimulationRunState.paused => 'Paused',
+    SimulationRunState.complete => 'Complete',
+  };
 
   @override
   Widget build(BuildContext context) {

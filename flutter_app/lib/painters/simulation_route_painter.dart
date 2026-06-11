@@ -89,11 +89,7 @@ class SimulationRoutePainter extends CustomPainter {
         16,
         Paint()..color = const Color(0x440e7656),
       );
-      canvas.drawCircle(
-        droneCenter,
-        10,
-        Paint()..color = Colors.white,
-      );
+      canvas.drawCircle(droneCenter, 10, Paint()..color = Colors.white);
       canvas.drawCircle(
         droneCenter,
         10,

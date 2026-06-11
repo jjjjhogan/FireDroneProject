@@ -41,10 +41,7 @@ class DraggableThermalFront extends StatelessWidget {
                       mapSize.height,
                 );
                 onMoved(
-                  Offset(
-                    next.dx.clamp(0.06, 0.94),
-                    next.dy.clamp(0.06, 0.94),
-                  ),
+                  Offset(next.dx.clamp(0.06, 0.94), next.dy.clamp(0.06, 0.94)),
                 );
               }
             : null,
@@ -78,8 +75,7 @@ class DraggableThermalFront extends StatelessWidget {
             if (isSelected) ...[
               const SizedBox(height: 4),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xfffff4ef),
                   borderRadius: BorderRadius.circular(999),

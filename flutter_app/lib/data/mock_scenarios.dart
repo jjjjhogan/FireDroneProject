@@ -217,9 +217,7 @@ SimulationLayout defaultLayoutForSeed(int seed) {
 
 SimulationLayout cloneLayout(SimulationLayout layout) {
   return SimulationLayout(
-    routePoints: layout.routePoints
-        .map((point) => point.copyWith())
-        .toList(),
+    routePoints: layout.routePoints.map((point) => point.copyWith()).toList(),
     thermalFront: layout.thermalFront.copyWith(),
   );
 }

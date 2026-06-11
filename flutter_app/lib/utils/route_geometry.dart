@@ -78,12 +78,16 @@ class RouteGeometry {
         return SimulationTelemetry(
           label: t < 0.5 ? from.label : to.label,
           windMph: lerpDouble(from.windMph, to.windMph, t)!,
-          humidityPct:
-              lerpDouble(from.humidityPct.toDouble(), to.humidityPct.toDouble(), t)!
-                  .round(),
-          coveragePct:
-              lerpDouble(from.coveragePct.toDouble(), to.coveragePct.toDouble(), t)!
-                  .round(),
+          humidityPct: lerpDouble(
+            from.humidityPct.toDouble(),
+            to.humidityPct.toDouble(),
+            t,
+          )!.round(),
+          coveragePct: lerpDouble(
+            from.coveragePct.toDouble(),
+            to.coveragePct.toDouble(),
+            t,
+          )!.round(),
           progressPct: (progress * 100).round(),
           routeCrossesFire: routeCrossesFire,
         );
@@ -136,10 +140,15 @@ class RouteGeometry {
     return false;
   }
 
-  static bool _pointInsideThermalFront(Offset point, ThermalFront thermalFront) {
-    final dx = (point.dx - thermalFront.normalizedPosition.dx) /
+  static bool _pointInsideThermalFront(
+    Offset point,
+    ThermalFront thermalFront,
+  ) {
+    final dx =
+        (point.dx - thermalFront.normalizedPosition.dx) /
         thermalFront.normalizedRadiusX;
-    final dy = (point.dy - thermalFront.normalizedPosition.dy) /
+    final dy =
+        (point.dy - thermalFront.normalizedPosition.dy) /
         thermalFront.normalizedRadiusY;
     return (dx * dx) + (dy * dy) <= 1;
   }
@@ -148,7 +157,8 @@ class RouteGeometry {
     final lengths = <double>[];
     for (var i = 0; i < route.length - 1; i++) {
       lengths.add(
-        (route[i + 1].normalizedPosition - route[i].normalizedPosition).distance,
+        (route[i + 1].normalizedPosition - route[i].normalizedPosition)
+            .distance,
       );
     }
     return lengths;
