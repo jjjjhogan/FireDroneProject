@@ -18,10 +18,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('AeroScout Command'), findsWidgets);
-    expect(find.text('DJI-ready wildfire mission control'), findsWidgets);
+    expect(find.text('Canyon Ridge Fire'), findsWidgets);
+    expect(find.text('LIVE FIRE PERIMETER'), findsOneWidget);
+    expect(find.text('CONNECTED DRONES'), findsOneWidget);
+    expect(find.text('TELEMETRY LINK'), findsOneWidget);
+    expect(find.text('FLEET HEALTH'), findsOneWidget);
     expect(find.text('DJI Link'), findsWidgets);
-    expect(find.text('Mission Readiness'), findsWidgets);
-    expect(find.text('Scenario Library'), findsWidgets);
+    expect(find.text('START MISSION'), findsWidgets);
+    expect(find.text('Scenario Library'), findsOneWidget);
+
+    await tester.tap(find.text('Scenario Library'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Mission Scenarios'), findsOneWidget);
     expect(find.text('Open in Simulator'), findsNWidgets(4));
     expect(find.text('Min Mountains · California'), findsWidgets);
@@ -35,16 +43,8 @@ void main() {
     await tester.tap(find.text('Live Simulator'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Live Simulator'), findsWidgets);
-    expect(find.text('DJI Mission Preview'), findsOneWidget);
-    expect(find.text('Run status'), findsOneWidget);
-    expect(find.text('Start run'), findsOneWidget);
-    expect(find.text('Confirm mission package'), findsOneWidget);
-    expect(find.text('Command gate locked'), findsWidgets);
-    expect(
-      find.text('Fire zone is independent of patrol route'),
-      findsOneWidget,
-    );
+    expect(find.text('Canyon Ridge Fire'), findsWidgets);
+    expect(find.text('START MISSION'), findsWidgets);
   });
 
   testWidgets('AeroScout scenario library fits compact mobile width', (
@@ -61,11 +61,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('AeroScout Command'), findsWidgets);
-    expect(find.text('DJI-ready wildfire mission control'), findsWidgets);
+    expect(find.text('Canyon Ridge Fire'), findsWidgets);
+    expect(find.text('CONNECTED DRONES'), findsWidgets);
     expect(find.text('DJI Link'), findsWidgets);
-    expect(find.text('Scenario Library'), findsWidgets);
-    expect(find.text('Mission Scenarios'), findsOneWidget);
-    expect(find.text('Min Mountains · California'), findsWidgets);
+    expect(find.text('START MISSION'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

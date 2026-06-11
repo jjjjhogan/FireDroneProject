@@ -21,7 +21,7 @@ class AeroScoutShell extends StatefulWidget {
 }
 
 class _AeroScoutShellState extends State<AeroScoutShell> {
-  int _page = 0;
+  int _page = 1;
   String _region = 'All';
   Scenario _activeScenario = scenarios.first;
 
@@ -83,18 +83,19 @@ class _AeroScoutShellState extends State<AeroScoutShell> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TopBar(
-                    compact: compact,
-                    title: _nav[_page].label,
-                    onMenuTap: () {},
-                  ),
+                  if (compact || _page != 1)
+                    TopBar(
+                      compact: compact,
+                      title: _nav[_page].label,
+                      onMenuTap: () {},
+                    ),
                   Expanded(
                     child: SingleChildScrollView(
                       padding: EdgeInsets.fromLTRB(
-                        compact ? 16 : 28,
-                        18,
-                        compact ? 16 : 28,
-                        compact ? 96 : 28,
+                        compact ? 16 : 12,
+                        compact ? 18 : 12,
+                        compact ? 16 : 12,
+                        compact ? 96 : 12,
                       ),
                       child: page,
                     ),
