@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from app.dji.state_store import DjiStateStore
+
 
 def _utc_now():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -153,6 +155,16 @@ class RealDjiConnector(BaseDjiConnector):
     def __init__(self, allow_commands=False, config=None):
         super().__init__(allow_commands=allow_commands)
         self.config = config or {}
+        self.state_store = DjiStateStore(
+            self.config.get("DJI_STATE_FILE", "instance/dji_state.json"),
+            self.config.get("DJI_TELEMETRY_TTL_SECONDS", 300),
+        )
+
+    def live_state(self):
+        state = self.state_store.read()
+        if self.state_store.is_fresh(state):
+            return state
+        return None
 
     def missing_configuration(self):
         return [
@@ -167,6 +179,19 @@ class RealDjiConnector(BaseDjiConnector):
     def status(self):
         missing = self.missing_configuration()
         configured = len(missing) == 0
+        live_state = self.live_state()
+        if live_state:
+            return {
+                "provider": "DJI",
+                "connector": self.connector_name,
+                "connection": "bridge-online",
+                "commandEnabled": self.allow_commands,
+                "liveData": True,
+                "source": live_state.get("source", "operator-bridge"),
+                "missingConfiguration": missing,
+                "reservedAdapters": ["DJI Cloud API", "DJI Mobile SDK Bridge"],
+                "lastSync": live_state.get("receivedAt", _utc_now()),
+            }
         return {
             "provider": "DJI",
             "connector": self.connector_name,
@@ -179,9 +204,24 @@ class RealDjiConnector(BaseDjiConnector):
         }
 
     def fleet(self):
+        live_state = self.live_state()
+        if live_state:
+            return {"drones": live_state.get("drones") or []}
         return {"drones": []}
 
     def telemetry(self):
+        live_state = self.live_state()
+        if live_state:
+            telemetry = live_state.get("telemetry") or {}
+            return {
+                "activeDroneId": telemetry.get("activeDroneId"),
+                "missionState": telemetry.get("missionState", "device-online"),
+                "routeProgressPct": telemetry.get("routeProgressPct", 0),
+                "windMph": telemetry.get("windMph"),
+                "temperatureF": telemetry.get("temperatureF"),
+                "firePerimeterRisk": telemetry.get("firePerimeterRisk", "unknown"),
+                "linkHealth": telemetry.get("linkHealth", "unknown"),
+            }
         return {
             "activeDroneId": None,
             "missionState": "not-configured",
@@ -193,6 +233,21 @@ class RealDjiConnector(BaseDjiConnector):
         }
 
     def preview_mission(self, payload):
+        live_state = self.live_state()
+        if live_state:
+            route_points = payload.get("routePoints") or []
+            return {
+                "available": True,
+                "scenarioId": payload.get("scenarioId", "unknown"),
+                "routePoints": route_points,
+                "estimatedDurationMin": max(len(route_points) * 4, 1),
+                "maxAltitudeM": 120,
+                "riskLevel": "operator-review",
+                "warnings": [
+                    "Real DJI bridge data is connected; operator confirmation is still required."
+                ],
+                "requiresConfirmation": True,
+            }
         return (
             {
                 "available": False,

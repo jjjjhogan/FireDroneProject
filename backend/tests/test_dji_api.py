@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 from pathlib import Path
 import sys
 
@@ -136,6 +137,113 @@ class DjiRealDataModeTest(unittest.TestCase):
         self.assertFalse(data["available"])
         self.assertEqual(data["riskLevel"], "unknown")
         self.assertIn("DJI connector is not configured", data["warnings"][0])
+
+
+class DjiRealIngestTest(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        state_file = str(Path(self.temp_dir.name) / "dji-state.json")
+        config = type(
+            "RealIngestConfig",
+            (),
+            {
+                "TESTING": True,
+                "SECRET_KEY": "test",
+                "DRONE_CONNECTOR": "real",
+                "ALLOW_DJI_COMMANDS": False,
+                "DJI_INGEST_TOKEN": "bridge-secret",
+                "DJI_STATE_FILE": state_file,
+                "DJI_TELEMETRY_TTL_SECONDS": 300,
+            },
+        )
+        self.app = create_app(config)
+        self.client = self.app.test_client()
+
+    def test_ingest_rejects_missing_token(self):
+        response = self.client.post(
+            "/api/dji/ingest/state",
+            json={
+                "drones": [
+                    {
+                        "id": "real-m3e-01",
+                        "name": "Matrice Field Unit",
+                        "model": "DJI enterprise aircraft",
+                        "connection": "online",
+                        "batteryPct": 91,
+                        "signalPct": 88,
+                        "lat": 34.62,
+                        "lng": -119.72,
+                        "altitudeM": 122,
+                        "lastSeen": "2026-06-11T17:55:00+00:00",
+                        "warnings": [],
+                    }
+                ],
+                "telemetry": {
+                    "activeDroneId": "real-m3e-01",
+                    "missionState": "device-online",
+                    "routeProgressPct": 12,
+                    "windMph": 9,
+                    "temperatureF": 81,
+                    "firePerimeterRisk": "operator-feed",
+                    "linkHealth": "stable",
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(self.client.get("/api/dji/fleet").get_json()["drones"], [])
+
+    def test_authorized_ingest_populates_real_fleet_and_telemetry(self):
+        response = self.client.post(
+            "/api/dji/ingest/state",
+            headers={"Authorization": "Bearer bridge-secret"},
+            json={
+                "source": "mobile-sdk-bridge",
+                "drones": [
+                    {
+                        "id": "real-m3e-01",
+                        "name": "Matrice Field Unit",
+                        "model": "DJI Matrice 30T",
+                        "connection": "online",
+                        "batteryPct": 91,
+                        "signalPct": 88,
+                        "lat": 34.62,
+                        "lng": -119.72,
+                        "altitudeM": 122,
+                        "lastSeen": "2026-06-11T17:55:00+00:00",
+                        "warnings": ["Operator telemetry feed"],
+                    }
+                ],
+                "telemetry": {
+                    "activeDroneId": "real-m3e-01",
+                    "missionState": "device-online",
+                    "routeProgressPct": 12,
+                    "windMph": 9,
+                    "temperatureF": 81,
+                    "firePerimeterRisk": "operator-feed",
+                    "linkHealth": "stable",
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertTrue(response.get_json()["accepted"])
+
+        status = self.client.get("/api/dji/status").get_json()
+        self.assertEqual(status["connection"], "bridge-online")
+        self.assertTrue(status["liveData"])
+        self.assertEqual(status["source"], "mobile-sdk-bridge")
+
+        fleet = self.client.get("/api/dji/fleet").get_json()
+        self.assertEqual(len(fleet["drones"]), 1)
+        self.assertEqual(fleet["drones"][0]["id"], "real-m3e-01")
+        self.assertEqual(fleet["drones"][0]["batteryPct"], 91)
+
+        telemetry = self.client.get("/api/dji/telemetry").get_json()
+        self.assertEqual(telemetry["activeDroneId"], "real-m3e-01")
+        self.assertEqual(telemetry["missionState"], "device-online")
+        self.assertEqual(telemetry["linkHealth"], "stable")
 
 
 if __name__ == "__main__":

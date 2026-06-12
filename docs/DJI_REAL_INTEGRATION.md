@@ -30,9 +30,66 @@ DJI_CLOUD_API_APP_KEY=
 DJI_CLOUD_API_APP_LICENSE=
 DJI_CLOUD_API_MQTT_HOST=
 DJI_WORKSPACE_ID=
+DJI_INGEST_TOKEN=
+DJI_STATE_FILE=
+DJI_TELEMETRY_TTL_SECONDS=300
 ```
 
 Until these values are configured and a Cloud API adapter is connected, the app must show no aircraft.
+
+## Real Bridge Ingest API
+
+The production UI reads only these backend DJI connector endpoints:
+
+```text
+GET /api/dji/status
+GET /api/dji/fleet
+GET /api/dji/telemetry
+POST /api/dji/missions/preview
+POST /api/dji/missions/confirm
+```
+
+To feed real data into those endpoints, connect a DJI Cloud API worker or DJI Mobile SDK Android bridge to:
+
+```text
+POST /api/dji/ingest/state
+Authorization: Bearer <DJI_INGEST_TOKEN>
+Content-Type: application/json
+```
+
+Example payload:
+
+```json
+{
+  "source": "mobile-sdk-bridge",
+  "drones": [
+    {
+      "id": "real-m3e-01",
+      "name": "Matrice Field Unit",
+      "model": "DJI Matrice 30T",
+      "connection": "online",
+      "batteryPct": 91,
+      "signalPct": 88,
+      "lat": 34.62,
+      "lng": -119.72,
+      "altitudeM": 122,
+      "lastSeen": "2026-06-11T17:55:00+00:00",
+      "warnings": []
+    }
+  ],
+  "telemetry": {
+    "activeDroneId": "real-m3e-01",
+    "missionState": "device-online",
+    "routeProgressPct": 12,
+    "windMph": 9,
+    "temperatureF": 81,
+    "firePerimeterRisk": "operator-feed",
+    "linkHealth": "stable"
+  }
+}
+```
+
+The backend persists this payload to `DJI_STATE_FILE` and treats it as live only while it is newer than `DJI_TELEMETRY_TTL_SECONDS`. Stale or missing state falls back to `not-configured` and empty fleet data.
 
 ### DJI Mobile SDK Bridge
 

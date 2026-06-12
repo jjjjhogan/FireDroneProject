@@ -50,6 +50,7 @@ The API will be available at `http://127.0.0.1:5000`.
 | `GET /api/dji/status` | DJI connector status and command gate |
 | `GET /api/dji/fleet` | Real DJI aircraft feed, empty until configured |
 | `GET /api/dji/telemetry` | Real DJI telemetry state, not-configured until connected |
+| `POST /api/dji/ingest/state` | Authenticated real DJI bridge ingest endpoint |
 | `POST /api/dji/missions/preview` | Build a guarded mission preview; blocked until DJI connector is configured |
 | `POST /api/dji/missions/confirm` | Confirm mission package; blocked unless `ALLOW_DJI_COMMANDS=true` |
 

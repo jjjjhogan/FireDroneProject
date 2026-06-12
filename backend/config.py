@@ -19,3 +19,6 @@ class Config:
     DJI_CLOUD_API_APP_LICENSE = os.getenv("DJI_CLOUD_API_APP_LICENSE", "")
     DJI_CLOUD_API_MQTT_HOST = os.getenv("DJI_CLOUD_API_MQTT_HOST", "")
     DJI_WORKSPACE_ID = os.getenv("DJI_WORKSPACE_ID", "")
+    DJI_INGEST_TOKEN = os.getenv("DJI_INGEST_TOKEN", "")
+    DJI_STATE_FILE = os.getenv("DJI_STATE_FILE", str(BASE_DIR / "instance" / "dji_state.json"))
+    DJI_TELEMETRY_TTL_SECONDS = int(os.getenv("DJI_TELEMETRY_TTL_SECONDS", "300"))
