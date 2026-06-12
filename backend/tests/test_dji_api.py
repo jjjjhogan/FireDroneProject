@@ -492,5 +492,95 @@ class DjiRealIngestTest(unittest.TestCase):
         self.assertEqual(telemetry["linkHealth"], "stale")
 
 
+class DjiRuntimeConnectionConfigTest(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.state_file = Path(self.temp_dir.name) / "dji-state.json"
+        self.config_file = Path(self.temp_dir.name) / "dji-runtime-config.json"
+        config = type(
+            "RuntimeConnectionConfig",
+            (),
+            {
+                "TESTING": True,
+                "SECRET_KEY": "test",
+                "DRONE_CONNECTOR": "real",
+                "ALLOW_DJI_COMMANDS": False,
+                "DJI_STATE_FILE": str(self.state_file),
+                "DJI_RUNTIME_CONFIG_FILE": str(self.config_file),
+                "DJI_TELEMETRY_TTL_SECONDS": 300,
+                "DJI_MAX_INGEST_DRONES": 16,
+            },
+        )
+        self.app = create_app(config)
+        self.client = self.app.test_client()
+
+    def test_connection_config_starts_empty_and_redacts_secrets(self):
+        response = self.client.get("/api/dji/connection")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertFalse(data["configured"])
+        self.assertEqual(data["mode"], "not-configured")
+        self.assertFalse(data["ingestTokenConfigured"])
+        self.assertNotIn("ingestToken", data)
+        self.assertNotIn("cloudMqttPassword", data)
+
+    def test_saving_cloud_connection_config_updates_status_without_exposing_secret(self):
+        response = self.client.post(
+            "/api/dji/connection",
+            json={
+                "mode": "cloud-api",
+                "ingestToken": "operator-secret",
+                "cloudMqttHost": "mqtt.example.test",
+                "cloudMqttPort": 8883,
+                "cloudMqttUsername": "pilot-user",
+                "cloudMqttPassword": "pilot-password",
+                "cloudMqttClientId": "fire-drone-web",
+                "workspaceId": "workspace-123",
+                "autoStartCloudBridge": False,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data["accepted"])
+        self.assertTrue(data["config"]["configured"])
+        self.assertEqual(data["config"]["mode"], "cloud-api")
+        self.assertTrue(data["config"]["ingestTokenConfigured"])
+        self.assertTrue(data["config"]["cloudMqttHostConfigured"])
+        self.assertEqual(data["config"]["cloudMqttClientId"], "fire-drone-web")
+        self.assertNotIn("operator-secret", json.dumps(data))
+        self.assertNotIn("pilot-password", json.dumps(data))
+
+        status = self.client.get("/api/dji/status").get_json()
+        self.assertEqual(status["connection"], "waiting-for-bridge")
+        self.assertTrue(status["ingestConfigured"])
+
+        ingest = self.client.post(
+            "/api/dji/ingest/state",
+            headers={"Authorization": "Bearer operator-secret"},
+            json={"source": "operator-web", "bridge": {"adapter": "manual"}},
+        )
+        self.assertEqual(ingest.status_code, 202)
+
+    def test_saving_mobile_connection_returns_bridge_endpoint(self):
+        response = self.client.post(
+            "/api/dji/connection",
+            json={
+                "mode": "mobile-sdk",
+                "ingestToken": "mobile-secret",
+                "operatorLabel": "Xavier RC",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        config = response.get_json()["config"]
+        self.assertEqual(config["mode"], "mobile-sdk")
+        self.assertTrue(config["configured"])
+        self.assertIn("/api/dji/ingest/mobile-sdk", config["mobileBridgeEndpoint"])
+        self.assertNotIn("mobile-secret", json.dumps(config))
+
+
 if __name__ == "__main__":
     unittest.main()

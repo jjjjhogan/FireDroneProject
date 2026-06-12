@@ -6,6 +6,7 @@ import '../models/scenario.dart';
 import '../models/simulation_layout.dart';
 import '../services/drone_api_client.dart';
 import '../widgets/common/info_card.dart';
+import '../widgets/simulator/dji_connection_dialog.dart';
 import '../widgets/simulator/mission_command_map.dart';
 
 class LiveSimulatorScreen extends StatefulWidget {
@@ -79,6 +80,18 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
     });
   }
 
+  Future<void> _openDjiConnectionSetup() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => DjiConnectionDialog(
+        droneClient: widget.droneClient,
+        onSaved: () {
+          setState(_loadDjiData);
+        },
+      ),
+    );
+  }
+
   Future<void> _confirmMissionPackage() async {
     setState(() => _confirming = true);
     final preview = await _previewFuture;
@@ -130,6 +143,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
             onStartMission: _confirmMissionPackage,
             onPause: _pauseRun,
             onAbort: _resetRun,
+            onConnectDji: _openDjiConnectionSetup,
           );
         }
 
@@ -143,6 +157,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
           onStartMission: _confirmMissionPackage,
           onPause: _pauseRun,
           onAbort: _resetRun,
+          onConnectDji: _openDjiConnectionSetup,
         );
       },
     );
@@ -160,6 +175,7 @@ class MissionCommandDashboard extends StatelessWidget {
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
+    required this.onConnectDji,
     super.key,
   });
 
@@ -172,12 +188,13 @@ class MissionCommandDashboard extends StatelessWidget {
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
+  final VoidCallback onConnectDji;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        MissionHeroStatus(status: status),
+        MissionHeroStatus(status: status, onConnectDji: onConnectDji),
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,6 +246,7 @@ class CompactMissionCommandDashboard extends StatelessWidget {
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
+    required this.onConnectDji,
     super.key,
   });
 
@@ -241,12 +259,13 @@ class CompactMissionCommandDashboard extends StatelessWidget {
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
+  final VoidCallback onConnectDji;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        MissionHeroStatus(status: status),
+        MissionHeroStatus(status: status, onConnectDji: onConnectDji),
         const SizedBox(height: 12),
         MissionCommandMap(
           missionAvailable: preview?.available ?? false,
@@ -296,9 +315,14 @@ Color _djiStatusColor(DjiStatus? status) {
 }
 
 class MissionHeroStatus extends StatelessWidget {
-  const MissionHeroStatus({required this.status, super.key});
+  const MissionHeroStatus({
+    required this.status,
+    required this.onConnectDji,
+    super.key,
+  });
 
   final DjiStatus? status;
+  final VoidCallback onConnectDji;
 
   @override
   Widget build(BuildContext context) {
@@ -398,7 +422,11 @@ class MissionHeroStatus extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      MissionLinkStatus(status: status, compact: compact),
+                      MissionLinkStatus(
+                        status: status,
+                        compact: compact,
+                        onConnectDji: onConnectDji,
+                      ),
                     ],
                   ),
                 ),
@@ -428,11 +456,13 @@ class MissionLinkStatus extends StatelessWidget {
   const MissionLinkStatus({
     required this.status,
     required this.compact,
+    required this.onConnectDji,
     super.key,
   });
 
   final DjiStatus? status;
   final bool compact;
+  final VoidCallback onConnectDji;
 
   @override
   Widget build(BuildContext context) {
@@ -477,6 +507,17 @@ class MissionLinkStatus extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w900,
             ),
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: onConnectDji,
+          icon: const Icon(Icons.settings_input_antenna, size: 16),
+          label: const Text('Connect DJI'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white70),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            visualDensity: VisualDensity.compact,
           ),
         ),
       ],

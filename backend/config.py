@@ -21,6 +21,10 @@ class Config:
     DJI_WORKSPACE_ID = os.getenv("DJI_WORKSPACE_ID", "")
     DJI_INGEST_TOKEN = os.getenv("DJI_INGEST_TOKEN", "")
     DJI_STATE_FILE = os.getenv("DJI_STATE_FILE", str(BASE_DIR / "instance" / "dji_state.json"))
+    DJI_RUNTIME_CONFIG_FILE = os.getenv(
+        "DJI_RUNTIME_CONFIG_FILE",
+        str(BASE_DIR / "instance" / "dji_runtime_config.json"),
+    )
     DJI_TELEMETRY_TTL_SECONDS = int(os.getenv("DJI_TELEMETRY_TTL_SECONDS", "300"))
     DJI_MAX_INGEST_DRONES = int(os.getenv("DJI_MAX_INGEST_DRONES", "16"))
     DJI_CLOUD_MQTT_PORT = int(os.getenv("DJI_CLOUD_MQTT_PORT", "8883"))

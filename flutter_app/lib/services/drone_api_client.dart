@@ -8,6 +8,10 @@ import '../models/simulation_layout.dart';
 
 abstract class DroneApiClient {
   Future<DjiStatus> fetchStatus();
+  Future<DjiConnectionConfig> fetchConnectionConfig();
+  Future<DjiConnectionConfig> saveConnectionConfig(
+    DjiConnectionRequest request,
+  );
   Future<List<DroneSummary>> fetchFleet();
   Future<TelemetrySnapshot> fetchTelemetry();
   Future<MissionPreview> previewMission({
@@ -38,6 +42,18 @@ class ResilientDroneApiClient implements DroneApiClient {
   @override
   Future<DjiStatus> fetchStatus() {
     return _fromPrimary((client) => client.fetchStatus());
+  }
+
+  @override
+  Future<DjiConnectionConfig> fetchConnectionConfig() {
+    return _fromPrimary((client) => client.fetchConnectionConfig());
+  }
+
+  @override
+  Future<DjiConnectionConfig> saveConnectionConfig(
+    DjiConnectionRequest request,
+  ) {
+    return _fromPrimary((client) => client.saveConnectionConfig(request));
   }
 
   @override
@@ -99,6 +115,21 @@ class HttpDroneApiClient implements DroneApiClient {
   @override
   Future<DjiStatus> fetchStatus() async {
     return DjiStatus.fromJson(await _getJson('/dji/status'));
+  }
+
+  @override
+  Future<DjiConnectionConfig> fetchConnectionConfig() async {
+    return DjiConnectionConfig.fromJson(await _getJson('/dji/connection'));
+  }
+
+  @override
+  Future<DjiConnectionConfig> saveConnectionConfig(
+    DjiConnectionRequest request,
+  ) async {
+    final json = await _postJson('/dji/connection', request.toJson());
+    return DjiConnectionConfig.fromJson(
+      json['config'] as Map<String, dynamic>? ?? const {},
+    );
   }
 
   @override
@@ -172,6 +203,30 @@ class UnavailableDroneApiClient implements DroneApiClient {
       reservedAdapters: ['DJI Cloud API', 'DJI Mobile SDK Bridge'],
       lastSync: 'not configured',
     );
+  }
+
+  @override
+  Future<DjiConnectionConfig> fetchConnectionConfig() async {
+    return const DjiConnectionConfig(
+      configured: false,
+      mode: 'not-configured',
+      operatorLabel: '',
+      ingestTokenConfigured: false,
+      cloudMqttHostConfigured: false,
+      cloudMqttUsernameConfigured: false,
+      cloudMqttClientId: '',
+      workspaceIdConfigured: false,
+      appIdConfigured: false,
+      mobileBridgeEndpoint: '',
+      updatedAt: null,
+    );
+  }
+
+  @override
+  Future<DjiConnectionConfig> saveConnectionConfig(
+    DjiConnectionRequest request,
+  ) {
+    return fetchConnectionConfig();
   }
 
   @override

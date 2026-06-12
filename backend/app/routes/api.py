@@ -2,8 +2,10 @@ from flask import current_app, request
 
 from app.dji import create_dji_connector
 from app.dji.cloud_api import cloud_api_message_to_ingest_payload
+from app.dji.cloud_bridge import cloud_bridge_manager
 from app.dji.ingest import normalize_ingest_payload
 from app.dji.mobile_sdk import mobile_sdk_state_to_ingest_payload
+from app.dji.runtime_config import DjiRuntimeConfigStore
 from app.dji.state_store import DjiStateStore, utc_now_iso
 from app.routes import api_bp
 
@@ -17,11 +19,21 @@ def status():
 
 
 def _dji_connector():
-    return create_dji_connector(current_app.config)
+    return create_dji_connector(_runtime_config_store().effective_config(current_app.config))
+
+
+def _runtime_config_store():
+    return DjiRuntimeConfigStore(
+        current_app.config.get(
+            "DJI_RUNTIME_CONFIG_FILE",
+            "instance/dji_runtime_config.json",
+        )
+    )
 
 
 def _authorized_ingest():
-    expected = str(current_app.config.get("DJI_INGEST_TOKEN", "")).strip()
+    effective_config = _runtime_config_store().effective_config(current_app.config)
+    expected = str(effective_config.get("DJI_INGEST_TOKEN", "")).strip()
     if not expected:
         return False
     header = request.headers.get("Authorization", "")
@@ -78,6 +90,34 @@ def dji_fleet():
 @api_bp.route("/dji/telemetry", methods=["GET"])
 def dji_telemetry():
     return _dji_connector().telemetry()
+
+
+@api_bp.route("/dji/connection", methods=["GET"])
+def dji_connection():
+    return {
+        **_runtime_config_store().public_config(request.host_url.rstrip("/")),
+        "cloudBridge": cloud_bridge_manager.status(),
+    }
+
+
+@api_bp.route("/dji/connection", methods=["POST"])
+def dji_save_connection():
+    payload = request.get_json(silent=True) or {}
+    try:
+        _runtime_config_store().write_from_payload(payload)
+    except ValueError as error:
+        return {"accepted": False, "error": str(error)}, 400
+    config = _runtime_config_store().public_config(request.host_url.rstrip("/"))
+    bridge_status = cloud_bridge_manager.status()
+    auto_start = bool(payload.get("autoStartCloudBridge", True))
+    if auto_start and config["mode"] == "cloud-api" and config["configured"]:
+        bridge_status = cloud_bridge_manager.start(
+            _runtime_config_store().effective_config(current_app.config)
+        )
+    return {
+        "accepted": True,
+        "config": {**config, "cloudBridge": bridge_status},
+    }
 
 
 @api_bp.route("/dji/ingest/state", methods=["POST"])

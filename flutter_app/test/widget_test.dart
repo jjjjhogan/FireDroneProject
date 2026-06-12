@@ -27,8 +27,19 @@ void main() {
     expect(find.text('TELEMETRY LINK'), findsOneWidget);
     expect(find.text('FLEET HEALTH'), findsOneWidget);
     expect(find.text('DJI Link'), findsWidgets);
+    expect(find.text('Connect DJI'), findsOneWidget);
     expect(find.text('START MISSION'), findsWidgets);
     expect(find.text('Scenario Library'), findsOneWidget);
+
+    await tester.tap(find.text('Connect DJI'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Backend ingest token'), findsOneWidget);
+    expect(find.text('Cloud API'), findsOneWidget);
+    expect(find.text('Mobile SDK'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Scenario Library'));
     await tester.pumpAndSettle();

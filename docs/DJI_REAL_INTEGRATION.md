@@ -54,6 +54,36 @@ The backend now reports distinct states so a real DJI setup is easier to debug:
 
 `liveData` is `true` only when the fresh bridge state includes at least one aircraft. A bridge heartbeat with zero aircraft keeps the connection online but does not invent fleet or telemetry values.
 
+## Website Connection Setup
+
+Operators can configure the local backend from the Flutter web app:
+
+1. Open `Live Simulator`.
+2. Click `Connect DJI`.
+3. Choose `Cloud API` or `Mobile SDK`.
+4. Enter the backend ingest token and the DJI connection fields.
+5. Save the connection.
+
+The browser sends the secret fields to the local Flask backend. The backend stores them in `DJI_RUNTIME_CONFIG_FILE`, which defaults to `backend/instance/dji_runtime_config.json`. The app never returns saved token, password, app key, or license values back to the browser; it only returns redacted `...Configured` booleans.
+
+The runtime config file is ignored by git through `backend/instance/`.
+
+Backend endpoints used by the setup dialog:
+
+```text
+GET /api/dji/connection
+POST /api/dji/connection
+```
+
+When Cloud API mode is saved with a valid MQTT host and ingest token, the backend attempts to start an in-process MQTT listener for:
+
+```text
+thing/product/+/osd
+thing/product/+/state
+```
+
+For production deployment, run the Flask backend behind HTTPS before accepting real operator secrets in a browser form.
+
 ## Real Bridge Ingest API
 
 The production UI reads only these backend DJI connector endpoints:
@@ -120,7 +150,7 @@ Bad payloads are rejected with HTTP `400` and do not overwrite the last known va
 
 ### DJI Cloud API MQTT Worker
 
-Use this path when DJI Pilot 2, DJI Dock, or a Cloud API worker can receive MQTT device-property topics. The worker subscribes to DJI Cloud API `osd` and `state` topics and forwards each message to the backend:
+Use this path when DJI Pilot 2, DJI Dock, or a Cloud API worker can receive MQTT device-property topics. The website connection dialog can start the backend listener automatically. You can also run the worker manually:
 
 ```bash
 cd backend

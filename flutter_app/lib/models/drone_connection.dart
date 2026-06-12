@@ -52,6 +52,99 @@ class DjiStatus {
   }
 }
 
+class DjiConnectionConfig {
+  const DjiConnectionConfig({
+    required this.configured,
+    required this.mode,
+    required this.operatorLabel,
+    required this.ingestTokenConfigured,
+    required this.cloudMqttHostConfigured,
+    required this.cloudMqttUsernameConfigured,
+    required this.cloudMqttClientId,
+    required this.workspaceIdConfigured,
+    required this.appIdConfigured,
+    required this.mobileBridgeEndpoint,
+    required this.updatedAt,
+  });
+
+  final bool configured;
+  final String mode;
+  final String operatorLabel;
+  final bool ingestTokenConfigured;
+  final bool cloudMqttHostConfigured;
+  final bool cloudMqttUsernameConfigured;
+  final String cloudMqttClientId;
+  final bool workspaceIdConfigured;
+  final bool appIdConfigured;
+  final String mobileBridgeEndpoint;
+  final String? updatedAt;
+
+  factory DjiConnectionConfig.fromJson(Map<String, dynamic> json) {
+    return DjiConnectionConfig(
+      configured: json['configured'] as bool? ?? false,
+      mode: json['mode'] as String? ?? 'not-configured',
+      operatorLabel: json['operatorLabel'] as String? ?? '',
+      ingestTokenConfigured: json['ingestTokenConfigured'] as bool? ?? false,
+      cloudMqttHostConfigured:
+          json['cloudMqttHostConfigured'] as bool? ?? false,
+      cloudMqttUsernameConfigured:
+          json['cloudMqttUsernameConfigured'] as bool? ?? false,
+      cloudMqttClientId: json['cloudMqttClientId'] as String? ?? '',
+      workspaceIdConfigured: json['workspaceIdConfigured'] as bool? ?? false,
+      appIdConfigured: json['appIdConfigured'] as bool? ?? false,
+      mobileBridgeEndpoint: json['mobileBridgeEndpoint'] as String? ?? '',
+      updatedAt: json['updatedAt'] as String?,
+    );
+  }
+}
+
+class DjiConnectionRequest {
+  const DjiConnectionRequest({
+    required this.mode,
+    required this.ingestToken,
+    required this.operatorLabel,
+    required this.cloudMqttHost,
+    required this.cloudMqttPort,
+    required this.cloudMqttUsername,
+    required this.cloudMqttPassword,
+    required this.cloudMqttClientId,
+    required this.cloudApiAppId,
+    required this.cloudApiAppKey,
+    required this.cloudApiAppLicense,
+    required this.workspaceId,
+  });
+
+  final String mode;
+  final String ingestToken;
+  final String operatorLabel;
+  final String cloudMqttHost;
+  final int cloudMqttPort;
+  final String cloudMqttUsername;
+  final String cloudMqttPassword;
+  final String cloudMqttClientId;
+  final String cloudApiAppId;
+  final String cloudApiAppKey;
+  final String cloudApiAppLicense;
+  final String workspaceId;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'mode': mode,
+      'ingestToken': ingestToken,
+      'operatorLabel': operatorLabel,
+      'cloudMqttHost': cloudMqttHost,
+      'cloudMqttPort': cloudMqttPort,
+      'cloudMqttUsername': cloudMqttUsername,
+      'cloudMqttPassword': cloudMqttPassword,
+      'cloudMqttClientId': cloudMqttClientId,
+      'cloudApiAppId': cloudApiAppId,
+      'cloudApiAppKey': cloudApiAppKey,
+      'cloudApiAppLicense': cloudApiAppLicense,
+      'workspaceId': workspaceId,
+    };
+  }
+}
+
 class DroneSummary {
   const DroneSummary({
     required this.id,

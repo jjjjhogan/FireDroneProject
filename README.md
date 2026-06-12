@@ -50,6 +50,8 @@ The API will be available at `http://127.0.0.1:5000`.
 | `GET /health`   | Health check       |
 | `GET /api/status` | API status info  |
 | `GET /api/dji/status` | DJI connector status and command gate |
+| `GET /api/dji/connection` | Redacted DJI website connection setup state |
+| `POST /api/dji/connection` | Save DJI Cloud API or Mobile SDK bridge settings from the website |
 | `GET /api/dji/fleet` | Real DJI aircraft feed, empty until configured |
 | `GET /api/dji/telemetry` | Real DJI telemetry state, not-configured until connected |
 | `POST /api/dji/ingest/state` | Authenticated canonical DJI bridge ingest endpoint |
@@ -64,6 +66,11 @@ Without DJI Cloud API MQTT input or a Mobile SDK bridge, the API intentionally r
 See `docs/DJI_REAL_INTEGRATION.md` for the real connection contract.
 
 ### DJI Bridge Helpers
+
+The Flutter `Live Simulator` screen includes a `Connect DJI` button. Operators can
+enter Cloud API or Mobile SDK bridge settings there; the browser sends secrets to
+the local Flask backend, which stores them in `backend/instance/` and only returns
+redacted setup status to the UI.
 
 Cloud API MQTT worker:
 
