@@ -273,6 +273,28 @@ class CompactMissionCommandDashboard extends StatelessWidget {
   }
 }
 
+String _djiStatusLabel(DjiStatus? status) {
+  if (status?.liveData ?? false) return 'LIVE TELEMETRY';
+  return switch (status?.connection) {
+    'waiting-for-bridge' => 'WAITING FOR BRIDGE',
+    'bridge-online' => 'BRIDGE ONLINE',
+    'bridge-stale' => 'BRIDGE STALE',
+    'configured' => 'CONNECTOR READY',
+    _ => 'NOT CONFIGURED',
+  };
+}
+
+Color _djiStatusColor(DjiStatus? status) {
+  if (status?.liveData ?? false) return const Color(0xff42d66b);
+  return switch (status?.connection) {
+    'waiting-for-bridge' => const Color(0xffffc857),
+    'bridge-online' => const Color(0xff27c38c),
+    'bridge-stale' => const Color(0xffff7a59),
+    'configured' => const Color(0xff7cc7ff),
+    _ => const Color(0xffffc857),
+  };
+}
+
 class MissionHeroStatus extends StatelessWidget {
   const MissionHeroStatus({required this.status, super.key});
 
@@ -283,7 +305,8 @@ class MissionHeroStatus extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 600;
-        final liveData = status?.liveData ?? false;
+        final statusLabel = _djiStatusLabel(status);
+        final statusColor = _djiStatusColor(status);
         return Container(
           height: compact ? 214 : 228,
           decoration: BoxDecoration(
@@ -330,19 +353,15 @@ class MissionHeroStatus extends StatelessWidget {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: liveData
-                                  ? const Color(0xff42d66b)
-                                  : const Color(0xffffc857),
+                              color: statusColor,
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            liveData ? 'LIVE' : 'NOT CONFIGURED',
+                            statusLabel,
                             style: TextStyle(
-                              color: liveData
-                                  ? const Color(0xff42d66b)
-                                  : const Color(0xffffc857),
+                              color: statusColor,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
                             ),
@@ -436,19 +455,13 @@ class MissionLinkStatus extends StatelessWidget {
             ),
           ],
         ),
-        if (status?.connection == 'not-configured')
-          const Text(
-            'DJI connector not configured',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
-          )
-        else if (!compact)
-          Text(
-            '${status?.connector ?? 'real'} connector',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
+        Text(
+          _linkStatusText(status, compact: compact),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
           ),
+        ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(
@@ -469,6 +482,28 @@ class MissionLinkStatus extends StatelessWidget {
       ],
     );
   }
+}
+
+String _linkStatusText(DjiStatus? status, {required bool compact}) {
+  if (status == null) return 'Reading DJI status';
+  if (status.connection == 'not-configured') {
+    return 'DJI connector not configured';
+  }
+  if (status.connection == 'waiting-for-bridge') {
+    return 'Waiting for DJI bridge';
+  }
+  if (status.connection == 'bridge-stale') {
+    return compact ? 'Bridge stale' : 'DJI bridge stale, check ingest worker';
+  }
+  if (status.connection == 'bridge-online' && !status.liveData) {
+    return compact ? 'Bridge online' : 'Bridge online, no aircraft telemetry';
+  }
+  if (status.liveData) {
+    return compact
+        ? '${status.aircraftCount} aircraft'
+        : '${status.source} · ${status.aircraftCount} aircraft';
+  }
+  return '${status.connector} connector';
 }
 
 class CompactReadinessBadge extends StatelessWidget {

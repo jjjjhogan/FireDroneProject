@@ -29,9 +29,14 @@ class DjiStateStore:
         state = {
             "source": payload.get("source") or "operator-bridge",
             "receivedAt": utc_now_iso(),
+            "bridge": payload.get("bridge") or {},
             "drones": payload.get("drones") or [],
             "telemetry": payload.get("telemetry") or {},
+            "warnings": payload.get("warnings") or [],
         }
+        return self.write_state(state)
+
+    def write_state(self, state):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temp_path = self.path.with_suffix(f"{self.path.suffix}.tmp")
         with temp_path.open("w", encoding="utf-8") as file:
@@ -39,14 +44,20 @@ class DjiStateStore:
         temp_path.replace(self.path)
         return state
 
-    def is_fresh(self, state):
+    def age_seconds(self, state):
         if not state or not state.get("receivedAt"):
-            return False
+            return None
         try:
             received_at = datetime.fromisoformat(state["receivedAt"])
         except ValueError:
-            return False
+            return None
         if received_at.tzinfo is None:
             received_at = received_at.replace(tzinfo=timezone.utc)
         age = utc_now() - received_at
-        return age.total_seconds() <= self.ttl_seconds
+        return age.total_seconds()
+
+    def is_fresh(self, state):
+        age = self.age_seconds(state)
+        if age is None:
+            return False
+        return age <= self.ttl_seconds

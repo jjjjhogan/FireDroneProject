@@ -12,10 +12,12 @@ FireDroneProject/
 │   ├── app/          # Application package
 │   │   └── routes/   # API route blueprints
 │   ├── config.py     # Configuration
+│   ├── scripts/      # DJI Cloud MQTT and Mobile SDK bridge helpers
 │   ├── run.py        # Entry point
 │   └── requirements.txt
 ├── flutter_app/      # AeroScout Command Flutter web app
 ├── mobile/           # Flutter mobile app
+│   ├── android_bridge/ # Native Android bridge helper for DJI Mobile SDK apps
 │   └── lib/          # Dart source code
 └── README.md
 ```
@@ -50,14 +52,36 @@ The API will be available at `http://127.0.0.1:5000`.
 | `GET /api/dji/status` | DJI connector status and command gate |
 | `GET /api/dji/fleet` | Real DJI aircraft feed, empty until configured |
 | `GET /api/dji/telemetry` | Real DJI telemetry state, not-configured until connected |
-| `POST /api/dji/ingest/state` | Authenticated real DJI bridge ingest endpoint |
+| `POST /api/dji/ingest/state` | Authenticated canonical DJI bridge ingest endpoint |
+| `POST /api/dji/ingest/cloud-api` | DJI Cloud API MQTT device-property ingest endpoint |
+| `POST /api/dji/ingest/mobile-sdk` | DJI Mobile SDK bridge ingest endpoint |
 | `POST /api/dji/missions/preview` | Build a guarded mission preview; blocked until DJI connector is configured |
 | `POST /api/dji/missions/confirm` | Confirm mission package; blocked unless `ALLOW_DJI_COMMANDS=true` |
 
 DJI integration defaults to `DRONE_CONNECTOR=real` and `ALLOW_DJI_COMMANDS=false`.
-Without DJI Cloud API credentials or a future Mobile SDK bridge, the API intentionally returns
-`not-configured`, empty fleet data, and no live telemetry instead of fake aircraft.
+Without DJI Cloud API MQTT input or a Mobile SDK bridge, the API intentionally returns
+`not-configured` or `waiting-for-bridge`, empty fleet data, and no live telemetry instead of fake aircraft.
 See `docs/DJI_REAL_INTEGRATION.md` for the real connection contract.
+
+### DJI Bridge Helpers
+
+Cloud API MQTT worker:
+
+```bash
+cd backend
+python scripts/dji_cloud_mqtt_worker.py \
+  --mqtt-host "$DJI_CLOUD_API_MQTT_HOST" \
+  --mqtt-username "$DJI_CLOUD_MQTT_USERNAME" \
+  --mqtt-password "$DJI_CLOUD_MQTT_PASSWORD" \
+  --token "$DJI_INGEST_TOKEN"
+```
+
+Mobile SDK bridge smoke test:
+
+```bash
+cd backend
+DJI_INGEST_TOKEN=bridge-secret python scripts/post_mobile_sdk_state.py --sample
+```
 
 ## Mobile (Flutter)
 

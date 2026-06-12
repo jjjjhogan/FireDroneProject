@@ -7,6 +7,10 @@ class DjiStatus {
     required this.connection,
     required this.commandEnabled,
     required this.liveData,
+    required this.ingestConfigured,
+    required this.aircraftCount,
+    required this.source,
+    required this.staleReason,
     required this.missingConfiguration,
     required this.reservedAdapters,
     required this.lastSync,
@@ -17,6 +21,10 @@ class DjiStatus {
   final String connection;
   final bool commandEnabled;
   final bool liveData;
+  final bool ingestConfigured;
+  final int aircraftCount;
+  final String source;
+  final String staleReason;
   final List<String> missingConfiguration;
   final List<String> reservedAdapters;
   final String lastSync;
@@ -28,6 +36,10 @@ class DjiStatus {
       connection: json['connection'] as String? ?? 'not-configured',
       commandEnabled: json['commandEnabled'] as bool? ?? false,
       liveData: json['liveData'] as bool? ?? false,
+      ingestConfigured: json['ingestConfigured'] as bool? ?? false,
+      aircraftCount: (json['aircraftCount'] as num? ?? 0).round(),
+      source: json['source'] as String? ?? 'none',
+      staleReason: json['staleReason'] as String? ?? '',
       missingConfiguration:
           (json['missingConfiguration'] as List<dynamic>? ?? const [])
               .map((item) => item.toString())

@@ -39,11 +39,7 @@ class ScenarioLibraryScreen extends StatelessWidget {
               title: 'DJI-ready wildfire mission control',
               body:
                   'Preview fire-zone routes, verify telemetry links, and prepare mission packages before a human releases any DJI command.',
-              linkLabel: status == null
-                  ? 'DJI Link standby'
-                  : status.connection == 'not-configured'
-                  ? 'DJI connector not configured'
-                  : 'DJI Link · ${status.connector}',
+              linkLabel: _scenarioLinkLabel(status),
               readiness: status?.commandEnabled ?? false
                   ? 'Commands enabled'
                   : 'Command gate locked',
@@ -55,16 +51,23 @@ class ScenarioLibraryScreen extends StatelessWidget {
           future: statusFuture,
           builder: (context, snapshot) {
             final status = snapshot.data;
-            final configured =
+            final connected = status?.liveData ?? false;
+            final bridgeConfigured =
                 status != null && status.connection != 'not-configured';
             return ResponsiveGrid(
               children: [
                 MetricCard(
                   icon: Icons.sensors,
                   label: 'DJI Link',
-                  value: configured ? 'Configured' : 'Not configured',
-                  detail: configured
-                      ? 'Reading status from the configured DJI connector'
+                  value: connected
+                      ? '${status!.aircraftCount} aircraft'
+                      : bridgeConfigured
+                      ? status.connection
+                      : 'Not configured',
+                  detail: connected
+                      ? 'Reading verified aircraft state from DJI ingest'
+                      : bridgeConfigured
+                      ? 'Waiting for fresh aircraft telemetry'
                       : 'No fake aircraft data is shown without DJI setup',
                 ),
                 const MetricCard(
@@ -76,7 +79,7 @@ class ScenarioLibraryScreen extends StatelessWidget {
                 MetricCard(
                   icon: Icons.local_fire_department_outlined,
                   label: 'Fire Perimeter',
-                  value: configured ? 'Live feed required' : 'No live feed',
+                  value: connected ? 'Operator feed' : 'No live feed',
                   detail:
                       'Connect DJI data feeds before treating map layers as live',
                 ),
@@ -119,4 +122,21 @@ class ScenarioLibraryScreen extends StatelessWidget {
       ],
     );
   }
+}
+
+String _scenarioLinkLabel(DjiStatus? status) {
+  if (status == null) return 'DJI Link standby';
+  if (status.connection == 'not-configured') {
+    return 'DJI connector not configured';
+  }
+  if (status.connection == 'waiting-for-bridge') {
+    return 'Waiting for DJI bridge';
+  }
+  if (status.connection == 'bridge-stale') {
+    return 'DJI bridge stale';
+  }
+  if (status.liveData) {
+    return 'DJI Link · ${status.source}';
+  }
+  return 'DJI Link · ${status.connection}';
 }

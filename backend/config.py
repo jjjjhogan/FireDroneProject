@@ -22,3 +22,11 @@ class Config:
     DJI_INGEST_TOKEN = os.getenv("DJI_INGEST_TOKEN", "")
     DJI_STATE_FILE = os.getenv("DJI_STATE_FILE", str(BASE_DIR / "instance" / "dji_state.json"))
     DJI_TELEMETRY_TTL_SECONDS = int(os.getenv("DJI_TELEMETRY_TTL_SECONDS", "300"))
+    DJI_MAX_INGEST_DRONES = int(os.getenv("DJI_MAX_INGEST_DRONES", "16"))
+    DJI_CLOUD_MQTT_PORT = int(os.getenv("DJI_CLOUD_MQTT_PORT", "8883"))
+    DJI_CLOUD_MQTT_USERNAME = os.getenv("DJI_CLOUD_MQTT_USERNAME", "")
+    DJI_CLOUD_MQTT_PASSWORD = os.getenv("DJI_CLOUD_MQTT_PASSWORD", "")
+    DJI_CLOUD_MQTT_CLIENT_ID = os.getenv(
+        "DJI_CLOUD_MQTT_CLIENT_ID",
+        "firedrone-cloud-worker",
+    )

@@ -48,7 +48,11 @@ class MissionCommandMap extends StatelessWidget {
             ),
           ),
           const Positioned.fill(child: FireMissionOverlay()),
-          const Positioned(left: 16, top: 14, child: MapTitlePill()),
+          Positioned(
+            left: 16,
+            top: 14,
+            child: MapTitlePill(missionAvailable: missionAvailable),
+          ),
           const Positioned(left: 16, top: 72, child: MapToolRail()),
           const Positioned(right: 16, top: 16, child: MapLayerRail()),
           const Positioned(right: 16, bottom: 78, child: MapZoomRail()),
@@ -292,7 +296,9 @@ class FireMissionPainter extends CustomPainter {
 }
 
 class MapTitlePill extends StatelessWidget {
-  const MapTitlePill({super.key});
+  const MapTitlePill({required this.missionAvailable, super.key});
+
+  final bool missionAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -302,10 +308,10 @@ class MapTitlePill extends StatelessWidget {
         color: Colors.black.withValues(alpha: 0.62),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'PLANNING MAP',
             style: TextStyle(
               color: Colors.white,
@@ -313,10 +319,12 @@ class MapTitlePill extends StatelessWidget {
               letterSpacing: 0.4,
             ),
           ),
-          SizedBox(height: 3),
+          const SizedBox(height: 3),
           Text(
-            'No live DJI/fire feed connected',
-            style: TextStyle(color: Color(0xffd8e7e1)),
+            missionAvailable
+                ? 'DJI bridge connected, mission preview ready'
+                : 'No live DJI/fire feed connected',
+            style: const TextStyle(color: Color(0xffd8e7e1)),
           ),
         ],
       ),

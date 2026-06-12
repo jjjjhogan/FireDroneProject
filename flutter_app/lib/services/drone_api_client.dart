@@ -158,6 +158,10 @@ class UnavailableDroneApiClient implements DroneApiClient {
       connection: 'not-configured',
       commandEnabled: false,
       liveData: false,
+      ingestConfigured: false,
+      aircraftCount: 0,
+      source: 'none',
+      staleReason: '',
       missingConfiguration: [
         'DJI_CLOUD_API_APP_ID',
         'DJI_CLOUD_API_APP_KEY',
