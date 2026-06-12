@@ -61,8 +61,10 @@ Operators can configure the local backend from the Flutter web app:
 1. Open `Live Simulator`.
 2. Click `Connect DJI`.
 3. Choose `Cloud API` or `Mobile SDK`.
-4. Enter the backend ingest token and the DJI connection fields.
-5. Save the connection.
+4. Click `Generate token` to create the backend ingest token, or paste an existing token.
+5. Enter only the required connection fields.
+6. Open `Advanced settings` only when you need port, client ID, workspace, app key, or license overrides.
+7. Save the connection.
 
 The browser sends the secret fields to the local Flask backend. The backend stores them in `DJI_RUNTIME_CONFIG_FILE`, which defaults to `backend/instance/dji_runtime_config.json`. The app never returns saved token, password, app key, or license values back to the browser; it only returns redacted `...Configured` booleans.
 
@@ -73,6 +75,7 @@ Backend endpoints used by the setup dialog:
 ```text
 GET /api/dji/connection
 POST /api/dji/connection
+POST /api/dji/connection/token
 ```
 
 When Cloud API mode is saved with a valid MQTT host and ingest token, the backend attempts to start an in-process MQTT listener for:

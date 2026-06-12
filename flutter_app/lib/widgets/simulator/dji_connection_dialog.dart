@@ -33,6 +33,8 @@ class _DjiConnectionDialogState extends State<DjiConnectionDialog> {
   final _workspaceId = TextEditingController();
   String _mode = 'cloud-api';
   bool _saving = false;
+  bool _generatingToken = false;
+  bool _advancedOpen = false;
   bool _seeded = false;
   String? _error;
 
@@ -105,6 +107,27 @@ class _DjiConnectionDialogState extends State<DjiConnectionDialog> {
     }
   }
 
+  Future<void> _generateToken() async {
+    setState(() {
+      _generatingToken = true;
+      _error = null;
+    });
+    try {
+      final token = await widget.droneClient.generateConnectionToken();
+      if (!mounted) return;
+      setState(() {
+        _ingestToken.text = token;
+        _generatingToken = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+        _generatingToken = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -164,23 +187,56 @@ class _DjiConnectionDialogState extends State<DjiConnectionDialog> {
                           : (value) => setState(() => _mode = value.first),
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _ingestToken,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Backend ingest token',
-                        hintText: config?.ingestTokenConfigured ?? false
-                            ? 'Leave blank to keep saved token'
-                            : 'Required for bridge authentication',
-                        border: const OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if ((config?.ingestTokenConfigured ?? false) ||
-                            (value?.trim().isNotEmpty ?? false)) {
-                          return null;
-                        }
-                        return 'Enter an ingest token';
-                      },
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _ingestToken,
+                            obscureText: true,
+                            decoration: InputDecoration(
+                              labelText: 'Backend ingest token',
+                              hintText: config?.ingestTokenConfigured ?? false
+                                  ? 'Leave blank to keep saved token'
+                                  : 'Generate a secure bridge token',
+                              border: const OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if ((config?.ingestTokenConfigured ?? false) ||
+                                  (value?.trim().isNotEmpty ?? false)) {
+                                return null;
+                              }
+                              return 'Generate or enter an ingest token';
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          height: 56,
+                          child: OutlinedButton.icon(
+                            onPressed: _generatingToken ? null : _generateToken,
+                            icon: _generatingToken
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.auto_fix_high),
+                            label: Text(
+                              _generatingToken
+                                  ? 'Generating'
+                                  : 'Generate token',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'This token protects the backend ingest endpoint. Save it, then use the same token in the Cloud API worker or Mobile SDK bridge.',
+                      style: TextStyle(color: Color(0xff64736d), height: 1.35),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -204,6 +260,9 @@ class _DjiConnectionDialogState extends State<DjiConnectionDialog> {
                         cloudAppLicense: _cloudAppLicense,
                         workspaceId: _workspaceId,
                         config: config,
+                        advancedOpen: _advancedOpen,
+                        onAdvancedChanged: (value) =>
+                            setState(() => _advancedOpen = value),
                       )
                     else
                       _MobileSdkInstructions(config: config),
@@ -271,6 +330,8 @@ class _CloudApiFields extends StatelessWidget {
     required this.cloudAppLicense,
     required this.workspaceId,
     required this.config,
+    required this.advancedOpen,
+    required this.onAdvancedChanged,
   });
 
   final TextEditingController cloudHost;
@@ -283,6 +344,8 @@ class _CloudApiFields extends StatelessWidget {
   final TextEditingController cloudAppLicense;
   final TextEditingController workspaceId;
   final DjiConnectionConfig? config;
+  final bool advancedOpen;
+  final ValueChanged<bool> onAdvancedChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -306,31 +369,6 @@ class _CloudApiFields extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: cloudPort,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'MQTT port',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: cloudClientId,
-                decoration: const InputDecoration(
-                  labelText: 'Client ID',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         TextFormField(
           controller: cloudUsername,
           decoration: InputDecoration(
@@ -351,46 +389,84 @@ class _CloudApiFields extends StatelessWidget {
             border: OutlineInputBorder(),
           ),
         ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: workspaceId,
-          decoration: InputDecoration(
-            labelText: 'Workspace ID',
-            hintText: config?.workspaceIdConfigured ?? false
-                ? 'Saved'
-                : 'DJI workspace identifier',
-            border: const OutlineInputBorder(),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: advancedOpen,
+          onChanged: onAdvancedChanged,
+          title: const Text(
+            'Advanced settings',
+            style: TextStyle(fontWeight: FontWeight.w800),
           ),
+          subtitle: const Text('Port, Client ID, workspace, app key, license'),
         ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: cloudAppId,
-          decoration: InputDecoration(
-            labelText: 'Cloud API App ID',
-            hintText: config?.appIdConfigured ?? false ? 'Saved' : 'Optional',
-            border: const OutlineInputBorder(),
+        if (advancedOpen) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: cloudPort,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'MQTT port',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: cloudClientId,
+                  decoration: const InputDecoration(
+                    labelText: 'Client ID',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: cloudAppKey,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Cloud API App Key',
-            hintText: 'Leave blank to keep saved key',
-            border: OutlineInputBorder(),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: workspaceId,
+            decoration: InputDecoration(
+              labelText: 'Workspace ID',
+              hintText: config?.workspaceIdConfigured ?? false
+                  ? 'Saved'
+                  : 'DJI workspace identifier',
+              border: const OutlineInputBorder(),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: cloudAppLicense,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Cloud API App License',
-            hintText: 'Leave blank to keep saved license',
-            border: OutlineInputBorder(),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: cloudAppId,
+            decoration: InputDecoration(
+              labelText: 'Cloud API App ID',
+              hintText: config?.appIdConfigured ?? false ? 'Saved' : 'Optional',
+              border: const OutlineInputBorder(),
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: cloudAppKey,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Cloud API App Key',
+              hintText: 'Leave blank to keep saved key',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: cloudAppLicense,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Cloud API App License',
+              hintText: 'Leave blank to keep saved license',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
       ],
     );
   }

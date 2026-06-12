@@ -1,3 +1,5 @@
+import secrets
+
 from flask import current_app, request
 
 from app.dji import create_dji_connector
@@ -118,6 +120,11 @@ def dji_save_connection():
         "accepted": True,
         "config": {**config, "cloudBridge": bridge_status},
     }
+
+
+@api_bp.route("/dji/connection/token", methods=["POST"])
+def dji_generate_connection_token():
+    return {"token": secrets.token_urlsafe(32)}
 
 
 @api_bp.route("/dji/ingest/state", methods=["POST"])

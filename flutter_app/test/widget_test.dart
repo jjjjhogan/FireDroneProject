@@ -35,10 +35,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Backend ingest token'), findsOneWidget);
+    expect(find.text('Generate token'), findsOneWidget);
     expect(find.text('Cloud API'), findsOneWidget);
     expect(find.text('Mobile SDK'), findsOneWidget);
+    expect(find.text('Advanced settings'), findsOneWidget);
+    expect(find.text('Cloud API App ID'), findsNothing);
+    expect(find.text('Cloud API App License'), findsNothing);
 
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('Advanced settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cloud API App ID'), findsOneWidget);
+    expect(find.text('Cloud API App License'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Close'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Scenario Library'));

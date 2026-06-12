@@ -9,6 +9,7 @@ import '../models/simulation_layout.dart';
 abstract class DroneApiClient {
   Future<DjiStatus> fetchStatus();
   Future<DjiConnectionConfig> fetchConnectionConfig();
+  Future<String> generateConnectionToken();
   Future<DjiConnectionConfig> saveConnectionConfig(
     DjiConnectionRequest request,
   );
@@ -47,6 +48,11 @@ class ResilientDroneApiClient implements DroneApiClient {
   @override
   Future<DjiConnectionConfig> fetchConnectionConfig() {
     return _fromPrimary((client) => client.fetchConnectionConfig());
+  }
+
+  @override
+  Future<String> generateConnectionToken() {
+    return _fromPrimary((client) => client.generateConnectionToken());
   }
 
   @override
@@ -120,6 +126,12 @@ class HttpDroneApiClient implements DroneApiClient {
   @override
   Future<DjiConnectionConfig> fetchConnectionConfig() async {
     return DjiConnectionConfig.fromJson(await _getJson('/dji/connection'));
+  }
+
+  @override
+  Future<String> generateConnectionToken() async {
+    final json = await _postJson('/dji/connection/token', const {});
+    return json['token'] as String? ?? '';
   }
 
   @override
@@ -220,6 +232,11 @@ class UnavailableDroneApiClient implements DroneApiClient {
       mobileBridgeEndpoint: '',
       updatedAt: null,
     );
+  }
+
+  @override
+  Future<String> generateConnectionToken() async {
+    return 'local-dev-token-${DateTime.now().microsecondsSinceEpoch}';
   }
 
   @override

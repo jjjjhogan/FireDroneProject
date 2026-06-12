@@ -526,6 +526,22 @@ class DjiRuntimeConnectionConfigTest(unittest.TestCase):
         self.assertNotIn("ingestToken", data)
         self.assertNotIn("cloudMqttPassword", data)
 
+    def test_connection_token_generator_returns_unique_redacted_tokens(self):
+        first = self.client.post("/api/dji/connection/token")
+        second = self.client.post("/api/dji/connection/token")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        first_token = first.get_json()["token"]
+        second_token = second.get_json()["token"]
+        self.assertIsInstance(first_token, str)
+        self.assertGreaterEqual(len(first_token), 32)
+        self.assertNotEqual(first_token, second_token)
+
+        config = self.client.get("/api/dji/connection").get_json()
+        self.assertFalse(config["ingestTokenConfigured"])
+        self.assertNotIn(first_token, json.dumps(config))
+
     def test_saving_cloud_connection_config_updates_status_without_exposing_secret(self):
         response = self.client.post(
             "/api/dji/connection",

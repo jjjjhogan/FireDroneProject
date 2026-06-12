@@ -68,9 +68,10 @@ See `docs/DJI_REAL_INTEGRATION.md` for the real connection contract.
 ### DJI Bridge Helpers
 
 The Flutter `Live Simulator` screen includes a `Connect DJI` button. Operators can
-enter Cloud API or Mobile SDK bridge settings there; the browser sends secrets to
-the local Flask backend, which stores them in `backend/instance/` and only returns
-redacted setup status to the UI.
+generate a backend ingest token and enter Cloud API or Mobile SDK bridge settings
+there. Advanced Cloud API fields are hidden under `Advanced settings`; the browser
+sends secrets to the local Flask backend, which stores them in `backend/instance/`
+and only returns redacted setup status to the UI.
 
 Cloud API MQTT worker:
 
