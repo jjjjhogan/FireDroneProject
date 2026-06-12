@@ -2,7 +2,7 @@
 
 https://www.tinyurl.com/xavstev
 
-A fire drone monitoring system with a **Flask** backend API, the original **Flutter** mobile app, and a new **AeroScout Sim** Flutter web prototype based on the project design slides.
+A fire drone monitoring system with a **Flask** backend API and an **AeroScout Sim** Flutter web prototype based on the project design slides.
 
 ## Project Structure
 
@@ -15,8 +15,6 @@ FireDroneProject/
 │   ├── run.py        # Entry point
 │   └── requirements.txt
 ├── flutter_app/      # AeroScout Sim Flutter web prototype
-├── mobile/           # Flutter mobile app
-│   └── lib/          # Dart source code
 └── README.md
 ```
 
@@ -48,22 +46,7 @@ The API will be available at `http://127.0.0.1:5000`.
 | `GET /health`   | Health check       |
 | `GET /api/status` | API status info  |
 
-## Mobile (Flutter)
-
-### Setup
-
-```bash
-cd mobile
-flutter pub get
-```
-
-### Run
-
-```bash
-flutter run
-```
-
-### AeroScout Sim Flutter Web Prototype
+## AeroScout Sim Flutter Web Prototype
 
 ```bash
 cd flutter_app
