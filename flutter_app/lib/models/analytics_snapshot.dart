@@ -156,6 +156,8 @@ class AnalyticsSnapshot {
     required this.kpis,
     required this.weeklyDetections,
     required this.responseTimesMin,
+    required this.thermalConfidenceTrend,
+    required this.patrolCoverageTrend,
     required this.recentMissions,
     required this.environmental,
     required this.fleetUtilization,
@@ -167,6 +169,8 @@ class AnalyticsSnapshot {
   final List<AnalyticsKpi> kpis;
   final List<AnalyticsTrendPoint> weeklyDetections;
   final List<AnalyticsTrendPoint> responseTimesMin;
+  final List<AnalyticsTrendPoint> thermalConfidenceTrend;
+  final List<AnalyticsTrendPoint> patrolCoverageTrend;
   final List<AnalyticsMissionRecord> recentMissions;
   final AnalyticsEnvironmental environmental;
   final AnalyticsFleetUtilization fleetUtilization;
@@ -192,6 +196,14 @@ class AnalyticsSnapshot {
       ),
       responseTimesMin: mapList(
         'responseTimesMin',
+        AnalyticsTrendPoint.fromJson,
+      ),
+      thermalConfidenceTrend: mapList(
+        'thermalConfidenceTrend',
+        AnalyticsTrendPoint.fromJson,
+      ),
+      patrolCoverageTrend: mapList(
+        'patrolCoverageTrend',
         AnalyticsTrendPoint.fromJson,
       ),
       recentMissions: mapList(

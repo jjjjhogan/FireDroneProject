@@ -62,6 +62,20 @@ const mockAnalyticsSnapshot = AnalyticsSnapshot(
     AnalyticsTrendPoint(label: 'Hotspot verify', value: 5.1, unit: 'min'),
     AnalyticsTrendPoint(label: 'Operator handoff', value: 2.2, unit: 'min'),
   ],
+  thermalConfidenceTrend: [
+    AnalyticsTrendPoint(label: '06:00', value: 86, unit: '%'),
+    AnalyticsTrendPoint(label: '08:00', value: 88, unit: '%'),
+    AnalyticsTrendPoint(label: '10:00', value: 91, unit: '%'),
+    AnalyticsTrendPoint(label: '12:00', value: 89, unit: '%'),
+    AnalyticsTrendPoint(label: '14:00', value: 93, unit: '%'),
+    AnalyticsTrendPoint(label: '16:00', value: 92, unit: '%'),
+  ],
+  patrolCoverageTrend: [
+    AnalyticsTrendPoint(label: 'Week 1', value: 71, unit: '%'),
+    AnalyticsTrendPoint(label: 'Week 2', value: 76, unit: '%'),
+    AnalyticsTrendPoint(label: 'Week 3', value: 79, unit: '%'),
+    AnalyticsTrendPoint(label: 'Week 4', value: 84, unit: '%'),
+  ],
   recentMissions: [
     AnalyticsMissionRecord(
       missionId: 'MSN-240610-01',
@@ -107,6 +121,11 @@ const mockAnalyticsSnapshot = AnalyticsSnapshot(
     AnalyticsIntegrationTarget(
       label: 'Analytics summary feed',
       endpoint: 'GET /api/analytics/summary',
+      status: 'ready',
+    ),
+    AnalyticsIntegrationTarget(
+      label: 'Analytics graph series',
+      endpoint: 'GET /api/analytics/graphs',
       status: 'ready',
     ),
     AnalyticsIntegrationTarget(

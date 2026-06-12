@@ -62,6 +62,20 @@ ANALYTICS_SUMMARY = {
         {"label": "Hotspot verify", "value": 5.1, "unit": "min"},
         {"label": "Operator handoff", "value": 2.2, "unit": "min"},
     ],
+    "thermalConfidenceTrend": [
+        {"label": "06:00", "value": 86, "unit": "%"},
+        {"label": "08:00", "value": 88, "unit": "%"},
+        {"label": "10:00", "value": 91, "unit": "%"},
+        {"label": "12:00", "value": 89, "unit": "%"},
+        {"label": "14:00", "value": 93, "unit": "%"},
+        {"label": "16:00", "value": 92, "unit": "%"},
+    ],
+    "patrolCoverageTrend": [
+        {"label": "Week 1", "value": 71, "unit": "%"},
+        {"label": "Week 2", "value": 76, "unit": "%"},
+        {"label": "Week 3", "value": 79, "unit": "%"},
+        {"label": "Week 4", "value": 84, "unit": "%"},
+    ],
     "recentMissions": [
         {
             "missionId": "MSN-240610-01",
@@ -110,6 +124,11 @@ ANALYTICS_SUMMARY = {
             "status": "connected",
         },
         {
+            "label": "Analytics graph series",
+            "endpoint": "GET /api/analytics/graphs",
+            "status": "connected",
+        },
+        {
             "label": "Mission history archive",
             "endpoint": "GET /api/analytics/missions",
             "status": "planned",
@@ -139,3 +158,17 @@ def status():
 @api_bp.route("/analytics/summary", methods=["GET"])
 def analytics_summary():
     return ANALYTICS_SUMMARY
+
+
+@api_bp.route("/analytics/graphs", methods=["GET"])
+def analytics_graphs():
+    return {
+        "dataSource": ANALYTICS_SUMMARY["dataSource"],
+        "lastUpdated": ANALYTICS_SUMMARY["lastUpdated"],
+        "weeklyDetections": ANALYTICS_SUMMARY["weeklyDetections"],
+        "responseTimesMin": ANALYTICS_SUMMARY["responseTimesMin"],
+        "thermalConfidenceTrend": ANALYTICS_SUMMARY["thermalConfidenceTrend"],
+        "patrolCoverageTrend": ANALYTICS_SUMMARY["patrolCoverageTrend"],
+        "fleetUtilization": ANALYTICS_SUMMARY["fleetUtilization"],
+        "recentMissions": ANALYTICS_SUMMARY["recentMissions"],
+    }
