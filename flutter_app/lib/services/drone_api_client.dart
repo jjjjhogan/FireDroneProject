@@ -17,6 +17,55 @@ abstract class DroneApiClient {
   Future<MissionConfirmResult> confirmMission(MissionPreview preview);
 }
 
+class ResilientDroneApiClient implements DroneApiClient {
+  ResilientDroneApiClient({DroneApiClient? primary, DroneApiClient? fallback})
+    : _primary = primary ?? HttpDroneApiClient(),
+      _fallback = fallback ?? const UnavailableDroneApiClient();
+
+  final DroneApiClient _primary;
+  final DroneApiClient _fallback;
+
+  Future<T> _fromPrimary<T>(
+    Future<T> Function(DroneApiClient client) request,
+  ) async {
+    try {
+      return await request(_primary);
+    } catch (_) {
+      return request(_fallback);
+    }
+  }
+
+  @override
+  Future<DjiStatus> fetchStatus() {
+    return _fromPrimary((client) => client.fetchStatus());
+  }
+
+  @override
+  Future<List<DroneSummary>> fetchFleet() {
+    return _fromPrimary((client) => client.fetchFleet());
+  }
+
+  @override
+  Future<TelemetrySnapshot> fetchTelemetry() {
+    return _fromPrimary((client) => client.fetchTelemetry());
+  }
+
+  @override
+  Future<MissionPreview> previewMission({
+    required Scenario scenario,
+    required SimulationLayout layout,
+  }) {
+    return _fromPrimary(
+      (client) => client.previewMission(scenario: scenario, layout: layout),
+    );
+  }
+
+  @override
+  Future<MissionConfirmResult> confirmMission(MissionPreview preview) {
+    return _fromPrimary((client) => client.confirmMission(preview));
+  }
+}
+
 class HttpDroneApiClient implements DroneApiClient {
   HttpDroneApiClient({Uri? baseUri, http.Client? client})
     : baseUri = baseUri ?? Uri.parse('http://127.0.0.1:5000/api'),
@@ -98,76 +147,44 @@ class HttpDroneApiClient implements DroneApiClient {
   }
 }
 
-class MockDroneApiClient implements DroneApiClient {
-  const MockDroneApiClient();
+class UnavailableDroneApiClient implements DroneApiClient {
+  const UnavailableDroneApiClient();
 
   @override
   Future<DjiStatus> fetchStatus() async {
     return const DjiStatus(
       provider: 'DJI',
-      connector: 'mock',
-      connection: 'simulated',
+      connector: 'real',
+      connection: 'not-configured',
       commandEnabled: false,
+      liveData: false,
+      missingConfiguration: [
+        'DJI_CLOUD_API_APP_ID',
+        'DJI_CLOUD_API_APP_KEY',
+        'DJI_CLOUD_API_APP_LICENSE',
+        'DJI_CLOUD_API_MQTT_HOST',
+        'DJI_WORKSPACE_ID',
+      ],
       reservedAdapters: ['DJI Cloud API', 'DJI Mobile SDK Bridge'],
-      lastSync: 'live mock feed',
+      lastSync: 'not configured',
     );
   }
 
   @override
   Future<List<DroneSummary>> fetchFleet() async {
-    return const [
-      DroneSummary(
-        id: 'dji-thermal-01',
-        name: 'DJI Thermal Lead',
-        model: 'DJI enterprise aircraft',
-        connection: 'online',
-        batteryPct: 82,
-        signalPct: 94,
-        lat: 37.2138,
-        lng: -119.5414,
-        altitudeM: 118,
-        lastSeen: 'now',
-        warnings: [],
-      ),
-      DroneSummary(
-        id: 'dji-relay-02',
-        name: 'DJI Relay Scout',
-        model: 'DJI enterprise aircraft',
-        connection: 'standby',
-        batteryPct: 68,
-        signalPct: 87,
-        lat: 37.2204,
-        lng: -119.5266,
-        altitudeM: 96,
-        lastSeen: 'now',
-        warnings: ['Manual launch confirmation required'],
-      ),
-      DroneSummary(
-        id: 'dji-map-03',
-        name: 'DJI Mapper Reserve',
-        model: 'DJI enterprise aircraft',
-        connection: 'charging',
-        batteryPct: 54,
-        signalPct: 0,
-        lat: 37.2064,
-        lng: -119.5531,
-        altitudeM: 0,
-        lastSeen: 'dock',
-        warnings: ['Dock battery below dispatch target'],
-      ),
-    ];
+    return const [];
   }
 
   @override
   Future<TelemetrySnapshot> fetchTelemetry() async {
     return const TelemetrySnapshot(
-      activeDroneId: 'dji-thermal-01',
-      missionState: 'preview-ready',
+      activeDroneId: 'unknown',
+      missionState: 'not-configured',
       routeProgressPct: 0,
-      windMph: 14,
-      temperatureF: 73,
-      firePerimeterRisk: 'elevated',
-      linkHealth: 'stable',
+      windMph: 0,
+      temperatureF: 0,
+      firePerimeterRisk: 'unknown',
+      linkHealth: 'not-configured',
     );
   }
 
@@ -177,6 +194,7 @@ class MockDroneApiClient implements DroneApiClient {
     required SimulationLayout layout,
   }) async {
     return MissionPreview(
+      available: false,
       scenarioId: scenario.name,
       routePoints: layout.routePoints
           .map(
@@ -186,12 +204,11 @@ class MockDroneApiClient implements DroneApiClient {
             },
           )
           .toList(),
-      estimatedDurationMin: 18,
-      maxAltitudeM: 120,
-      riskLevel: 'elevated',
+      estimatedDurationMin: 0,
+      maxAltitudeM: 0,
+      riskLevel: 'unknown',
       warnings: const [
-        'DJI command dispatch is locked until a human confirms.',
-        'Route intersects the active fire perimeter buffer.',
+        'DJI connector is not configured; mission package was not sent to an aircraft.',
       ],
       requiresConfirmation: true,
     );
@@ -202,9 +219,9 @@ class MockDroneApiClient implements DroneApiClient {
     return const MissionConfirmResult(
       accepted: false,
       blockedReason:
-          'ALLOW_DJI_COMMANDS is false; live DJI command dispatch is locked.',
+          'DJI connector is not configured; live command dispatch is unavailable.',
       missionId: null,
-      nextRequiredAction: 'Enable backend command gate',
+      nextRequiredAction: 'Configure DJI Cloud API or Mobile SDK bridge',
     );
   }
 }

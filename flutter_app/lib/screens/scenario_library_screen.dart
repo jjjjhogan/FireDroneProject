@@ -41,6 +41,8 @@ class ScenarioLibraryScreen extends StatelessWidget {
                   'Preview fire-zone routes, verify telemetry links, and prepare mission packages before a human releases any DJI command.',
               linkLabel: status == null
                   ? 'DJI Link standby'
+                  : status.connection == 'not-configured'
+                  ? 'DJI connector not configured'
                   : 'DJI Link · ${status.connector}',
               readiness: status?.commandEnabled ?? false
                   ? 'Commands enabled'
@@ -49,27 +51,38 @@ class ScenarioLibraryScreen extends StatelessWidget {
           },
         ),
         const SizedBox(height: 18),
-        ResponsiveGrid(
-          children: const [
-            MetricCard(
-              icon: Icons.sensors,
-              label: 'DJI Link',
-              value: 'Mock live',
-              detail: 'Cloud API and Mobile SDK bridge are reserved',
-            ),
-            MetricCard(
-              icon: Icons.verified_user_outlined,
-              label: 'Mission Readiness',
-              value: 'Preview only',
-              detail: 'Manual confirmation required before dispatch',
-            ),
-            MetricCard(
-              icon: Icons.local_fire_department_outlined,
-              label: 'Fire Perimeter',
-              value: 'Elevated',
-              detail: 'Route preview checks active thermal buffer',
-            ),
-          ],
+        FutureBuilder<DjiStatus>(
+          future: statusFuture,
+          builder: (context, snapshot) {
+            final status = snapshot.data;
+            final configured =
+                status != null && status.connection != 'not-configured';
+            return ResponsiveGrid(
+              children: [
+                MetricCard(
+                  icon: Icons.sensors,
+                  label: 'DJI Link',
+                  value: configured ? 'Configured' : 'Not configured',
+                  detail: configured
+                      ? 'Reading status from the configured DJI connector'
+                      : 'No fake aircraft data is shown without DJI setup',
+                ),
+                const MetricCard(
+                  icon: Icons.verified_user_outlined,
+                  label: 'Mission Readiness',
+                  value: 'Preview only',
+                  detail: 'Manual confirmation required before dispatch',
+                ),
+                MetricCard(
+                  icon: Icons.local_fire_department_outlined,
+                  label: 'Fire Perimeter',
+                  value: configured ? 'Live feed required' : 'No live feed',
+                  detail:
+                      'Connect DJI data feeds before treating map layers as live',
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 18),
         SectionHeader(

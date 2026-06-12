@@ -68,6 +68,25 @@ class FleetPage extends StatelessWidget {
           future: fleetFuture,
           builder: (context, snapshot) {
             final drones = snapshot.data ?? const <DroneSummary>[];
+            if (drones.isEmpty) {
+              return const InfoCard(
+                child: Row(
+                  children: [
+                    Icon(Icons.sensors_off, color: Color(0xff8c9b96)),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'No real DJI aircraft connected. Configure DJI Cloud API or a Mobile SDK bridge to populate this fleet.',
+                        style: TextStyle(
+                          color: Color(0xff4f5f5a),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
             return Column(
               children: drones
                   .map(

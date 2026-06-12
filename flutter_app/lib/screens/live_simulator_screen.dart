@@ -108,13 +108,13 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
         final telemetry =
             data?[2] as TelemetrySnapshot? ??
             const TelemetrySnapshot(
-              activeDroneId: 'dji-thermal-01',
-              missionState: 'preview-ready',
+              activeDroneId: 'unknown',
+              missionState: 'not-configured',
               routeProgressPct: 0,
-              windMph: 14,
-              temperatureF: 73,
-              firePerimeterRisk: 'elevated',
-              linkHealth: 'stable',
+              windMph: 0,
+              temperatureF: 0,
+              firePerimeterRisk: 'unknown',
+              linkHealth: 'not-configured',
             );
         final preview = data?[3] as MissionPreview?;
         final desktop = MediaQuery.sizeOf(context).width >= 1120;
@@ -186,6 +186,7 @@ class MissionCommandDashboard extends StatelessWidget {
               child: Column(
                 children: [
                   MissionCommandMap(
+                    missionAvailable: preview?.available ?? false,
                     onStartMission: onStartMission,
                     onPause: onPause,
                     onAbort: onAbort,
@@ -248,6 +249,7 @@ class CompactMissionCommandDashboard extends StatelessWidget {
         MissionHeroStatus(status: status),
         const SizedBox(height: 12),
         MissionCommandMap(
+          missionAvailable: preview?.available ?? false,
           onStartMission: onStartMission,
           onPause: onPause,
           onAbort: onAbort,
@@ -281,6 +283,7 @@ class MissionHeroStatus extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 600;
+        final liveData = status?.liveData ?? false;
         return Container(
           height: compact ? 214 : 228,
           decoration: BoxDecoration(
@@ -326,16 +329,20 @@ class MissionHeroStatus extends StatelessWidget {
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(
-                              color: Color(0xff42d66b),
+                            decoration: BoxDecoration(
+                              color: liveData
+                                  ? const Color(0xff42d66b)
+                                  : const Color(0xffffc857),
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
-                            'LIVE',
+                          Text(
+                            liveData ? 'LIVE' : 'NOT CONFIGURED',
                             style: TextStyle(
-                              color: Color(0xff42d66b),
+                              color: liveData
+                                  ? const Color(0xff42d66b)
+                                  : const Color(0xffffc857),
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
                             ),
@@ -383,9 +390,11 @@ class MissionHeroStatus extends StatelessWidget {
                 child: compact
                     ? CompactReadinessBadge(
                         commandEnabled: status?.commandEnabled ?? false,
+                        liveData: status?.liveData ?? false,
                       )
                     : MissionReadinessCard(
                         commandEnabled: status?.commandEnabled ?? false,
+                        liveData: status?.liveData ?? false,
                       ),
               ),
             ],
@@ -413,30 +422,33 @@ class MissionLinkStatus extends StatelessWidget {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Row(
+        const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.sensors, color: Color(0xff47d16a), size: 17),
-            const SizedBox(width: 7),
-            const Text(
+            Icon(Icons.sensors, color: Color(0xff47d16a), size: 17),
+            SizedBox(width: 7),
+            Text(
               'DJI Link',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
               ),
             ),
-            if (!compact) ...[
-              const SizedBox(width: 3),
-              Text(
-                '· ${status?.connector ?? 'mock'} connector',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
           ],
         ),
+        if (status?.connection == 'not-configured')
+          const Text(
+            'DJI connector not configured',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+          )
+        else if (!compact)
+          Text(
+            '${status?.connector ?? 'real'} connector',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(
@@ -460,9 +472,14 @@ class MissionLinkStatus extends StatelessWidget {
 }
 
 class CompactReadinessBadge extends StatelessWidget {
-  const CompactReadinessBadge({required this.commandEnabled, super.key});
+  const CompactReadinessBadge({
+    required this.commandEnabled,
+    required this.liveData,
+    super.key,
+  });
 
   final bool commandEnabled;
+  final bool liveData;
 
   @override
   Widget build(BuildContext context) {
@@ -479,7 +496,7 @@ class CompactReadinessBadge extends StatelessWidget {
             width: 46,
             height: 46,
             child: CircularProgressIndicator(
-              value: 0.82,
+              value: liveData ? 0.82 : 0,
               strokeWidth: 6,
               backgroundColor: const Color(0xff2d3740),
               color: commandEnabled
@@ -488,10 +505,10 @@ class CompactReadinessBadge extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 9),
-          const Expanded(
+          Expanded(
             child: Text(
-              '82%\nREADY',
-              style: TextStyle(
+              liveData ? '82%\nREADY' : '0%\nOFF',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
@@ -506,9 +523,14 @@ class CompactReadinessBadge extends StatelessWidget {
 }
 
 class MissionReadinessCard extends StatelessWidget {
-  const MissionReadinessCard({required this.commandEnabled, super.key});
+  const MissionReadinessCard({
+    required this.commandEnabled,
+    required this.liveData,
+    super.key,
+  });
 
   final bool commandEnabled;
+  final bool liveData;
 
   @override
   Widget build(BuildContext context) {
@@ -535,17 +557,17 @@ class MissionReadinessCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 CircularProgressIndicator(
-                  value: 0.82,
+                  value: liveData ? 0.82 : 0,
                   strokeWidth: 8,
                   backgroundColor: const Color(0xff2d3740),
                   color: commandEnabled
                       ? const Color(0xff47d16a)
                       : const Color(0xff27c38c),
                 ),
-                const Center(
+                Center(
                   child: Text(
-                    '82%',
-                    style: TextStyle(
+                    liveData ? '82%' : '0%',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
@@ -556,12 +578,12 @@ class MissionReadinessCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   'MISSION READINESS',
                   style: TextStyle(
                     color: Colors.white,
@@ -569,11 +591,11 @@ class MissionReadinessCard extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                SizedBox(height: 10),
-                ReadinessLine(label: 'Drones Online', ok: true),
-                ReadinessLine(label: 'Telemetry Link', ok: true),
-                ReadinessLine(label: 'Weather OK', ok: true),
-                ReadinessLine(label: 'Payload Systems', ok: false),
+                const SizedBox(height: 10),
+                ReadinessLine(label: 'Drones Online', ok: liveData),
+                ReadinessLine(label: 'Telemetry Link', ok: liveData),
+                ReadinessLine(label: 'Weather OK', ok: liveData),
+                ReadinessLine(label: 'Payload Systems', ok: commandEnabled),
               ],
             ),
           ),
@@ -654,7 +676,7 @@ class CommandRightRail extends StatelessWidget {
           onAbort: onAbort,
         ),
         const SizedBox(height: 8),
-        const WeatherConditionsPanel(),
+        WeatherConditionsPanel(telemetry: telemetry),
       ],
     );
   }
@@ -696,8 +718,20 @@ class ConnectedDronesPanel extends StatelessWidget {
             ],
           ),
           const Divider(height: 18),
-          for (var i = 0; i < fleet.length; i++)
-            DroneListRow(index: i + 1, drone: fleet[i]),
+          if (fleet.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Text(
+                'No real DJI aircraft connected',
+                style: TextStyle(
+                  color: Color(0xff62716c),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          else
+            for (var i = 0; i < fleet.length; i++)
+              DroneListRow(index: i + 1, drone: fleet[i]),
         ],
       ),
     );
@@ -782,6 +816,7 @@ class TelemetryLinkPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final configured = telemetry.linkHealth != 'not-configured';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -803,7 +838,9 @@ class TelemetryLinkPanel extends StatelessWidget {
                 ),
               ),
               Text(
-                telemetry.linkHealth == 'stable'
+                telemetry.linkHealth == 'not-configured'
+                    ? 'Not configured'
+                    : telemetry.linkHealth == 'stable'
                     ? 'Excellent'
                     : telemetry.linkHealth,
                 style: const TextStyle(
@@ -817,21 +854,36 @@ class TelemetryLinkPanel extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: TelemetryMetric(label: 'Link Quality', value: '98%'),
+                child: TelemetryMetric(
+                  label: 'Link Quality',
+                  value: configured ? '98%' : '--',
+                ),
               ),
               Expanded(
-                child: TelemetryMetric(label: 'Latency', value: '120 ms'),
+                child: TelemetryMetric(
+                  label: 'Latency',
+                  value: configured ? '120 ms' : '--',
+                ),
               ),
               Expanded(
-                child: TelemetryMetric(label: 'Data Rate', value: '8.6 Mbps'),
+                child: TelemetryMetric(
+                  label: 'Data Rate',
+                  value: configured ? '8.6 Mbps' : '--',
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 36,
-            child: CustomPaint(painter: TelemetrySparklinePainter()),
-          ),
+          if (configured)
+            SizedBox(
+              height: 36,
+              child: CustomPaint(painter: TelemetrySparklinePainter()),
+            )
+          else
+            const Text(
+              'Connect DJI Cloud API or Mobile SDK bridge to receive live telemetry.',
+              style: TextStyle(color: Color(0xffaebbb5), height: 1.35),
+            ),
         ],
       ),
     );
@@ -937,6 +989,7 @@ class MissionActionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final previewAvailable = preview?.available ?? false;
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -953,7 +1006,9 @@ class MissionActionPanel extends StatelessWidget {
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(48),
               ),
-              onPressed: preview == null || confirming ? null : onStartMission,
+              onPressed: !previewAvailable || confirming
+                  ? null
+                  : onStartMission,
               icon: Icon(confirming ? Icons.hourglass_top : Icons.play_arrow),
               label: Text(confirming ? 'CONFIRMING' : 'START MISSION'),
             ),
@@ -988,6 +1043,19 @@ class MissionActionPanel extends StatelessWidget {
               ),
             ],
           ),
+          if (!previewAvailable) ...[
+            const SizedBox(height: 8),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'DJI connector not configured',
+                style: TextStyle(
+                  color: Color(0xffffc857),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
           if (confirmResult != null) ...[
             const SizedBox(height: 8),
             Align(
@@ -1010,44 +1078,57 @@ class MissionActionPanel extends StatelessWidget {
 }
 
 class WeatherConditionsPanel extends StatelessWidget {
-  const WeatherConditionsPanel({super.key});
+  const WeatherConditionsPanel({required this.telemetry, super.key});
+
+  final TelemetrySnapshot telemetry;
 
   @override
   Widget build(BuildContext context) {
+    final configured = telemetry.linkHealth != 'not-configured';
     return InfoCard(
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
+        children: [
+          const Text(
             'WEATHER & CONDITIONS',
             style: TextStyle(fontWeight: FontWeight.w900),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 14,
             runSpacing: 12,
             children: [
-              WeatherChip(icon: Icons.thermostat, value: '24°C', label: 'Temp'),
-              WeatherChip(icon: Icons.air, value: 'WNW 6 m/s', label: 'Wind'),
+              WeatherChip(
+                icon: Icons.thermostat,
+                value: configured
+                    ? '${telemetry.temperatureF.round()}°F'
+                    : '--',
+                label: 'Temp',
+              ),
+              WeatherChip(
+                icon: Icons.air,
+                value: configured ? '${telemetry.windMph.round()} mph' : '--',
+                label: 'Wind',
+              ),
               WeatherChip(
                 icon: Icons.water_drop_outlined,
-                value: '55%',
+                value: configured ? 'Live feed' : '--',
                 label: 'Humidity',
               ),
               WeatherChip(
                 icon: Icons.visibility_outlined,
-                value: '16 km',
+                value: configured ? 'Live feed' : '--',
                 label: 'Visibility',
               ),
               WeatherChip(
                 icon: Icons.local_fire_department_outlined,
-                value: 'High',
+                value: configured ? telemetry.firePerimeterRisk : '--',
                 label: 'Fire Behavior',
               ),
               WeatherChip(
                 icon: Icons.gps_fixed,
-                value: 'Stable',
+                value: configured ? 'Stable' : 'No feed',
                 label: 'Atmosphere',
               ),
             ],
@@ -1130,7 +1211,18 @@ class FleetHealthStrip extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
               ),
               const SizedBox(height: 10),
-              if (stacked)
+              if (display.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 22),
+                  child: Text(
+                    'No real DJI aircraft connected',
+                    style: TextStyle(
+                      color: Color(0xff62716c),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else if (stacked)
                 Column(
                   children: [
                     for (var i = 0; i < display.length; i++) ...[

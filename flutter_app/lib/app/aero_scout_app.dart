@@ -4,12 +4,9 @@ import 'aero_scout_shell.dart';
 import '../services/drone_api_client.dart';
 
 class AeroScoutApp extends StatelessWidget {
-  const AeroScoutApp({
-    this.droneClient = const MockDroneApiClient(),
-    super.key,
-  });
+  const AeroScoutApp({this.droneClient, super.key});
 
-  final DroneApiClient droneClient;
+  final DroneApiClient? droneClient;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +22,9 @@ class AeroScoutApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xffeef4f1),
         useMaterial3: true,
       ),
-      home: AeroScoutShell(droneClient: droneClient),
+      home: AeroScoutShell(
+        droneClient: droneClient ?? ResilientDroneApiClient(),
+      ),
     );
   }
 }

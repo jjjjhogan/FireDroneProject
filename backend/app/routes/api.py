@@ -34,7 +34,10 @@ def dji_telemetry():
 @api_bp.route("/dji/missions/preview", methods=["POST"])
 def dji_mission_preview():
     payload = request.get_json(silent=True) or {}
-    return _dji_connector().preview_mission(payload)
+    result = _dji_connector().preview_mission(payload)
+    if isinstance(result, tuple):
+        return result
+    return result
 
 
 @api_bp.route("/dji/missions/confirm", methods=["POST"])

@@ -139,20 +139,93 @@ class MockDjiConnector(BaseDjiConnector):
         }
 
 
-class DjiCloudConnector(MockDjiConnector):
+class RealDjiConnector(BaseDjiConnector):
+    connector_name = "real"
+
+    required_configuration = [
+        "DJI_CLOUD_API_APP_ID",
+        "DJI_CLOUD_API_APP_KEY",
+        "DJI_CLOUD_API_APP_LICENSE",
+        "DJI_CLOUD_API_MQTT_HOST",
+        "DJI_WORKSPACE_ID",
+    ]
+
+    def __init__(self, allow_commands=False, config=None):
+        super().__init__(allow_commands=allow_commands)
+        self.config = config or {}
+
+    def missing_configuration(self):
+        return [
+            key
+            for key in self.required_configuration
+            if not str(self.config.get(key, "")).strip()
+        ]
+
+    def is_configured(self):
+        return len(self.missing_configuration()) == 0
+
+    def status(self):
+        missing = self.missing_configuration()
+        configured = len(missing) == 0
+        return {
+            "provider": "DJI",
+            "connector": self.connector_name,
+            "connection": "configured" if configured else "not-configured",
+            "commandEnabled": self.allow_commands and configured,
+            "liveData": False,
+            "missingConfiguration": missing,
+            "reservedAdapters": ["DJI Cloud API", "DJI Mobile SDK Bridge"],
+            "lastSync": _utc_now(),
+        }
+
+    def fleet(self):
+        return {"drones": []}
+
+    def telemetry(self):
+        return {
+            "activeDroneId": None,
+            "missionState": "not-configured",
+            "routeProgressPct": 0,
+            "windMph": None,
+            "temperatureF": None,
+            "firePerimeterRisk": "unknown",
+            "linkHealth": "not-configured",
+        }
+
+    def preview_mission(self, payload):
+        return (
+            {
+                "available": False,
+                "scenarioId": payload.get("scenarioId", "unknown"),
+                "routePoints": payload.get("routePoints") or [],
+                "estimatedDurationMin": 0,
+                "maxAltitudeM": 0,
+                "riskLevel": "unknown",
+                "warnings": [
+                    "DJI connector is not configured; mission package was not sent to an aircraft."
+                ],
+                "requiresConfirmation": True,
+            },
+            409,
+        )
+
+
+class DjiCloudConnector(RealDjiConnector):
     connector_name = "dji-cloud-api"
 
 
-class DjiMobileBridgeConnector(MockDjiConnector):
+class DjiMobileBridgeConnector(RealDjiConnector):
     connector_name = "dji-mobile-sdk-bridge"
 
 
 def create_dji_connector(config):
-    connector_name = str(config.get("DRONE_CONNECTOR", "mock")).lower()
+    connector_name = str(config.get("DRONE_CONNECTOR", "real")).lower()
     allow_commands = bool(config.get("ALLOW_DJI_COMMANDS", False))
 
+    if connector_name == "mock":
+        return MockDjiConnector(allow_commands=allow_commands)
     if connector_name in {"cloud", "dji-cloud", "dji-cloud-api"}:
-        return DjiCloudConnector(allow_commands=allow_commands)
+        return DjiCloudConnector(allow_commands=allow_commands, config=config)
     if connector_name in {"mobile", "mobile-sdk", "dji-mobile-sdk-bridge"}:
-        return DjiMobileBridgeConnector(allow_commands=allow_commands)
-    return MockDjiConnector(allow_commands=allow_commands)
+        return DjiMobileBridgeConnector(allow_commands=allow_commands, config=config)
+    return RealDjiConnector(allow_commands=allow_commands, config=config)

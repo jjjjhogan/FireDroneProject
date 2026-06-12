@@ -14,6 +14,13 @@ class TestConfig:
     ALLOW_DJI_COMMANDS = False
 
 
+class RealDataDefaultConfig:
+    TESTING = True
+    SECRET_KEY = "test"
+    DRONE_CONNECTOR = "real"
+    ALLOW_DJI_COMMANDS = False
+
+
 class DjiApiTest(unittest.TestCase):
     def setUp(self):
         self.app = create_app(TestConfig)
@@ -89,6 +96,46 @@ class DjiApiTest(unittest.TestCase):
         self.assertFalse(result["accepted"])
         self.assertIn("ALLOW_DJI_COMMANDS", result["blockedReason"])
         self.assertEqual(result["nextRequiredAction"], "Enable backend command gate")
+
+
+class DjiRealDataModeTest(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(RealDataDefaultConfig)
+        self.client = self.app.test_client()
+
+    def test_real_mode_reports_not_configured_without_fake_fleet(self):
+        status_response = self.client.get("/api/dji/status")
+        fleet_response = self.client.get("/api/dji/fleet")
+        telemetry_response = self.client.get("/api/dji/telemetry")
+
+        self.assertEqual(status_response.status_code, 200)
+        status = status_response.get_json()
+        self.assertEqual(status["connector"], "real")
+        self.assertEqual(status["connection"], "not-configured")
+        self.assertFalse(status["commandEnabled"])
+        self.assertFalse(status["liveData"])
+        self.assertIn("missingConfiguration", status)
+
+        self.assertEqual(fleet_response.status_code, 200)
+        self.assertEqual(fleet_response.get_json()["drones"], [])
+
+        self.assertEqual(telemetry_response.status_code, 200)
+        telemetry = telemetry_response.get_json()
+        self.assertIsNone(telemetry["activeDroneId"])
+        self.assertEqual(telemetry["missionState"], "not-configured")
+        self.assertEqual(telemetry["linkHealth"], "not-configured")
+
+    def test_real_mode_blocks_mission_preview_without_connector(self):
+        response = self.client.post(
+            "/api/dji/missions/preview",
+            json={"scenarioId": "canyon-ridge", "routePoints": []},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        data = response.get_json()
+        self.assertFalse(data["available"])
+        self.assertEqual(data["riskLevel"], "unknown")
+        self.assertIn("DJI connector is not configured", data["warnings"][0])
 
 
 if __name__ == "__main__":

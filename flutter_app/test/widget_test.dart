@@ -19,8 +19,11 @@ void main() {
 
     expect(find.text('AeroScout Command'), findsWidgets);
     expect(find.text('Canyon Ridge Fire'), findsWidgets);
-    expect(find.text('LIVE FIRE PERIMETER'), findsOneWidget);
+    expect(find.text('PLANNING MAP'), findsOneWidget);
     expect(find.text('CONNECTED DRONES'), findsOneWidget);
+    expect(find.text('DJI connector not configured'), findsWidgets);
+    expect(find.text('0 / 0 Online'), findsOneWidget);
+    expect(find.text('No real DJI aircraft connected'), findsWidgets);
     expect(find.text('TELEMETRY LINK'), findsOneWidget);
     expect(find.text('FLEET HEALTH'), findsOneWidget);
     expect(find.text('DJI Link'), findsWidgets);
@@ -63,6 +66,8 @@ void main() {
     expect(find.text('AeroScout Command'), findsWidgets);
     expect(find.text('Canyon Ridge Fire'), findsWidgets);
     expect(find.text('CONNECTED DRONES'), findsWidgets);
+    expect(find.text('DJI connector not configured'), findsWidgets);
+    expect(find.text('No real DJI aircraft connected'), findsWidgets);
     expect(find.text('DJI Link'), findsWidgets);
     expect(find.text('START MISSION'), findsWidgets);
     expect(tester.takeException(), isNull);

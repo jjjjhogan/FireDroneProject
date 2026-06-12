@@ -6,6 +6,8 @@ class DjiStatus {
     required this.connector,
     required this.connection,
     required this.commandEnabled,
+    required this.liveData,
+    required this.missingConfiguration,
     required this.reservedAdapters,
     required this.lastSync,
   });
@@ -14,19 +16,26 @@ class DjiStatus {
   final String connector;
   final String connection;
   final bool commandEnabled;
+  final bool liveData;
+  final List<String> missingConfiguration;
   final List<String> reservedAdapters;
   final String lastSync;
 
   factory DjiStatus.fromJson(Map<String, dynamic> json) {
     return DjiStatus(
       provider: json['provider'] as String? ?? 'DJI',
-      connector: json['connector'] as String? ?? 'mock',
-      connection: json['connection'] as String? ?? 'simulated',
+      connector: json['connector'] as String? ?? 'real',
+      connection: json['connection'] as String? ?? 'not-configured',
       commandEnabled: json['commandEnabled'] as bool? ?? false,
+      liveData: json['liveData'] as bool? ?? false,
+      missingConfiguration:
+          (json['missingConfiguration'] as List<dynamic>? ?? const [])
+              .map((item) => item.toString())
+              .toList(),
       reservedAdapters: (json['reservedAdapters'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
           .toList(),
-      lastSync: json['lastSync'] as String? ?? 'standby',
+      lastSync: json['lastSync'] as String? ?? 'not configured',
     );
   }
 }
@@ -122,6 +131,7 @@ class TelemetrySnapshot {
 
 class MissionPreview {
   const MissionPreview({
+    required this.available,
     required this.scenarioId,
     required this.routePoints,
     required this.estimatedDurationMin,
@@ -131,6 +141,7 @@ class MissionPreview {
     required this.requiresConfirmation,
   });
 
+  final bool available;
   final String scenarioId;
   final List<Map<String, double>> routePoints;
   final int estimatedDurationMin;
@@ -151,6 +162,7 @@ class MissionPreview {
     }).toList();
 
     return MissionPreview(
+      available: json['available'] as bool? ?? true,
       scenarioId: json['scenarioId'] as String? ?? 'unknown',
       routePoints: points,
       estimatedDurationMin: (json['estimatedDurationMin'] as num? ?? 0).round(),

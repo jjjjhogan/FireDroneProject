@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 
 class MissionCommandMap extends StatelessWidget {
   const MissionCommandMap({
+    required this.missionAvailable,
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
     super.key,
   });
 
+  final bool missionAvailable;
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
@@ -55,6 +57,7 @@ class MissionCommandMap extends StatelessWidget {
             right: 16,
             bottom: 16,
             child: MapCommandControls(
+              missionAvailable: missionAvailable,
               onStartMission: onStartMission,
               onPause: onPause,
               onAbort: onAbort,
@@ -303,7 +306,7 @@ class MapTitlePill extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'LIVE FIRE PERIMETER',
+            'PLANNING MAP',
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -311,7 +314,10 @@ class MapTitlePill extends StatelessWidget {
             ),
           ),
           SizedBox(height: 3),
-          Text('Updated 09:42 AM', style: TextStyle(color: Color(0xffd8e7e1))),
+          Text(
+            'No live DJI/fire feed connected',
+            style: TextStyle(color: Color(0xffd8e7e1)),
+          ),
         ],
       ),
     );
@@ -397,12 +403,14 @@ class MapToolButton extends StatelessWidget {
 
 class MapCommandControls extends StatelessWidget {
   const MapCommandControls({
+    required this.missionAvailable,
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
     super.key,
   });
 
+  final bool missionAvailable;
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
@@ -429,7 +437,7 @@ class MapCommandControls extends StatelessWidget {
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(46),
                   ),
-                  onPressed: onStartMission,
+                  onPressed: missionAvailable ? onStartMission : null,
                   icon: const Icon(Icons.play_arrow),
                   label: Text(
                     compact ? 'START\nMISSION' : 'START MISSION',

@@ -127,11 +127,11 @@ class MissionOverviewCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: SidebarLabelValue(label: 'Started', value: '09:42 AM'),
+                child: SidebarLabelValue(label: 'Started', value: 'Not live'),
               ),
               SizedBox(width: 16),
               Expanded(
-                child: SidebarLabelValue(label: 'Elapsed', value: '00:18:42'),
+                child: SidebarLabelValue(label: 'Elapsed', value: '--'),
               ),
             ],
           ),
@@ -141,7 +141,7 @@ class MissionOverviewCard extends StatelessWidget {
               Icon(Icons.wb_sunny_outlined, color: Color(0xffffc857), size: 26),
               SizedBox(width: 8),
               Text(
-                '24°C',
+                '--',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -151,14 +151,14 @@ class MissionOverviewCard extends StatelessWidget {
               SizedBox(width: 18),
               Expanded(
                 child: Text(
-                  'WNW 6 m/s',
+                  'No live feed',
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
             ],
           ),
           SizedBox(height: 16),
-          SidebarLabelValue(label: 'Visibility', value: '16 km'),
+          SidebarLabelValue(label: 'Visibility', value: '--'),
           SizedBox(height: 18),
           Text(
             'Fire Behavior Index',
@@ -166,7 +166,7 @@ class MissionOverviewCard extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'High',
+            'No live feed',
             style: TextStyle(
               color: Color(0xffff9f1c),
               fontWeight: FontWeight.w800,

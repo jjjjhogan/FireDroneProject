@@ -2,7 +2,7 @@
 
 https://www.tinyurl.com/xavstev
 
-A fire drone monitoring system with a **Flask** backend API, the original **Flutter** mobile app, and a new **AeroScout Sim** Flutter web prototype based on the project design slides.
+A fire drone monitoring system with a **Flask** backend API, the original **Flutter** mobile app, and a new **AeroScout Command** Flutter web app for DJI-ready wildfire mission control.
 
 ## Project Structure
 
@@ -14,7 +14,7 @@ FireDroneProject/
 │   ├── config.py     # Configuration
 │   ├── run.py        # Entry point
 │   └── requirements.txt
-├── flutter_app/      # AeroScout Sim Flutter web prototype
+├── flutter_app/      # AeroScout Command Flutter web app
 ├── mobile/           # Flutter mobile app
 │   └── lib/          # Dart source code
 └── README.md
@@ -48,14 +48,15 @@ The API will be available at `http://127.0.0.1:5000`.
 | `GET /health`   | Health check       |
 | `GET /api/status` | API status info  |
 | `GET /api/dji/status` | DJI connector status and command gate |
-| `GET /api/dji/fleet` | Mock DJI aircraft fleet feed |
-| `GET /api/dji/telemetry` | Mock telemetry snapshot |
-| `POST /api/dji/missions/preview` | Build a guarded mission preview |
+| `GET /api/dji/fleet` | Real DJI aircraft feed, empty until configured |
+| `GET /api/dji/telemetry` | Real DJI telemetry state, not-configured until connected |
+| `POST /api/dji/missions/preview` | Build a guarded mission preview; blocked until DJI connector is configured |
 | `POST /api/dji/missions/confirm` | Confirm mission package; blocked unless `ALLOW_DJI_COMMANDS=true` |
 
-DJI integration defaults to `DRONE_CONNECTOR=mock` and `ALLOW_DJI_COMMANDS=false`.
-The code reserves adapter paths for DJI Cloud API and a future DJI Mobile SDK bridge,
-but live command dispatch remains locked unless the backend safety gate is explicitly enabled.
+DJI integration defaults to `DRONE_CONNECTOR=real` and `ALLOW_DJI_COMMANDS=false`.
+Without DJI Cloud API credentials or a future Mobile SDK bridge, the API intentionally returns
+`not-configured`, empty fleet data, and no live telemetry instead of fake aircraft.
+See `docs/DJI_REAL_INTEGRATION.md` for the real connection contract.
 
 ## Mobile (Flutter)
 
@@ -72,7 +73,7 @@ flutter pub get
 flutter run
 ```
 
-### AeroScout Sim Flutter Web Prototype
+### AeroScout Command Flutter Web
 
 ```bash
 cd flutter_app
@@ -80,7 +81,7 @@ flutter pub get
 flutter run
 ```
 
-The new Flutter prototype includes a DJI-ready mission-control redesign with dashboards for analytics, drone fleet status, scenario planning, guarded mission preview, and live simulator controls. Scenario and hero decorations use generated wildfire patrol landscape images in `flutter_app/assets/images/`.
+The Flutter web app includes a DJI-ready mission-control dashboard for analytics, drone fleet status, scenario planning, guarded mission preview, and live simulator controls. By default it shows real connector status or a clear not-configured state; it does not invent aircraft when no DJI data source is connected.
 
 ## Development Notes
 
