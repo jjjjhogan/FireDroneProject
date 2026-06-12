@@ -31,7 +31,7 @@ class Sidebar extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'AeroScout Sim',
+                      'AeroScout Command',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

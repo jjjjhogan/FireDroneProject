@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../models/drone_connection.dart';
 import '../models/scenario.dart';
+import '../services/drone_api_client.dart';
+import '../widgets/common/metric_card.dart';
 import '../widgets/common/responsive_grid.dart';
 import '../widgets/common/section_header.dart';
 import '../widgets/scenario/hero_panel.dart';
@@ -12,6 +15,7 @@ class ScenarioLibraryScreen extends StatelessWidget {
     required this.visibleScenarios,
     required this.onRegionChanged,
     required this.onOpenSimulator,
+    required this.droneClient,
     super.key,
   });
 
@@ -19,20 +23,59 @@ class ScenarioLibraryScreen extends StatelessWidget {
   final List<Scenario> visibleScenarios;
   final ValueChanged<String> onRegionChanged;
   final ValueChanged<Scenario> onOpenSimulator;
+  final DroneApiClient droneClient;
 
   @override
   Widget build(BuildContext context) {
+    final statusFuture = droneClient.fetchStatus();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const HeroPanel(
-          title: 'Cooperative wildfire patrol planning',
-          body:
-              'Tune drone routes, sensor cadence, and terrain response before sending a fleet into a live fire zone.',
+        FutureBuilder<DjiStatus>(
+          future: statusFuture,
+          builder: (context, snapshot) {
+            final status = snapshot.data;
+            return HeroPanel(
+              title: 'DJI-ready wildfire mission control',
+              body:
+                  'Preview fire-zone routes, verify telemetry links, and prepare mission packages before a human releases any DJI command.',
+              linkLabel: status == null
+                  ? 'DJI Link standby'
+                  : 'DJI Link · ${status.connector}',
+              readiness: status?.commandEnabled ?? false
+                  ? 'Commands enabled'
+                  : 'Command gate locked',
+            );
+          },
+        ),
+        const SizedBox(height: 18),
+        ResponsiveGrid(
+          children: const [
+            MetricCard(
+              icon: Icons.sensors,
+              label: 'DJI Link',
+              value: 'Mock live',
+              detail: 'Cloud API and Mobile SDK bridge are reserved',
+            ),
+            MetricCard(
+              icon: Icons.verified_user_outlined,
+              label: 'Mission Readiness',
+              value: 'Preview only',
+              detail: 'Manual confirmation required before dispatch',
+            ),
+            MetricCard(
+              icon: Icons.local_fire_department_outlined,
+              label: 'Fire Perimeter',
+              value: 'Elevated',
+              detail: 'Route preview checks active thermal buffer',
+            ),
+          ],
         ),
         const SizedBox(height: 18),
         SectionHeader(
-          title: 'Pre-built Scenarios',
+          title: 'Mission Scenarios',
+          subtitle:
+              'Pick a terrain profile, then open it in the DJI mission preview.',
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: regions

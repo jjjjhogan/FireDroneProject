@@ -1,0 +1,128 @@
+import '../models/analytics_snapshot.dart';
+
+const mockAnalyticsSnapshot = AnalyticsSnapshot(
+  dataSource: 'mock',
+  lastUpdated: '2026-06-10T09:42:00-07:00',
+  kpis: [
+    AnalyticsKpi(
+      id: 'detection_latency',
+      label: 'Detection Latency',
+      value: '2.6 min',
+      detail: 'Median time from hotspot cue to operator alert',
+      trend: 'Down 31% vs manual patrol',
+    ),
+    AnalyticsKpi(
+      id: 'thermal_confidence',
+      label: 'Thermal Confidence',
+      value: '91%',
+      detail: 'Model ensemble average across active sorties',
+      trend: '+4 pts this week',
+    ),
+    AnalyticsKpi(
+      id: 'safe_return',
+      label: 'Safe Return Rate',
+      value: '97%',
+      detail: 'Battery-aware routing with reserve margin',
+      trend: 'Stable over 14 days',
+    ),
+    AnalyticsKpi(
+      id: 'coverage_efficiency',
+      label: 'Coverage Efficiency',
+      value: '84%',
+      detail: 'Perimeter scanned vs planned patrol corridor',
+      trend: '+9% after route optimizer',
+    ),
+    AnalyticsKpi(
+      id: 'false_positive_rate',
+      label: 'False Positive Rate',
+      value: '6.2%',
+      detail: 'Thermal hits cleared after visual confirmation',
+      trend: 'Down 1.8 pts',
+    ),
+    AnalyticsKpi(
+      id: 'command_gate',
+      label: 'Command Gate',
+      value: 'Locked',
+      detail: 'DJI dispatch requires human confirmation',
+      trend: 'Awaiting backend enable',
+    ),
+  ],
+  weeklyDetections: [
+    AnalyticsTrendPoint(label: 'Mon', value: 4, unit: 'hotspots'),
+    AnalyticsTrendPoint(label: 'Tue', value: 7, unit: 'hotspots'),
+    AnalyticsTrendPoint(label: 'Wed', value: 5, unit: 'hotspots'),
+    AnalyticsTrendPoint(label: 'Thu', value: 9, unit: 'hotspots'),
+    AnalyticsTrendPoint(label: 'Fri', value: 6, unit: 'hotspots'),
+    AnalyticsTrendPoint(label: 'Sat', value: 11, unit: 'hotspots'),
+    AnalyticsTrendPoint(label: 'Sun', value: 8, unit: 'hotspots'),
+  ],
+  responseTimesMin: [
+    AnalyticsTrendPoint(label: 'Scout launch', value: 3.4, unit: 'min'),
+    AnalyticsTrendPoint(label: 'Perimeter scan', value: 12.8, unit: 'min'),
+    AnalyticsTrendPoint(label: 'Hotspot verify', value: 5.1, unit: 'min'),
+    AnalyticsTrendPoint(label: 'Operator handoff', value: 2.2, unit: 'min'),
+  ],
+  recentMissions: [
+    AnalyticsMissionRecord(
+      missionId: 'MSN-240610-01',
+      scenarioName: 'Canyon Ridge Fire',
+      outcome: 'completed',
+      durationMin: 18,
+      hotspotsDetected: 3,
+      completedAt: 'Jun 10, 08:14 AM',
+    ),
+    AnalyticsMissionRecord(
+      missionId: 'MSN-240609-04',
+      scenarioName: 'Min Mountains',
+      outcome: 'completed',
+      durationMin: 22,
+      hotspotsDetected: 1,
+      completedAt: 'Jun 9, 04:52 PM',
+    ),
+    AnalyticsMissionRecord(
+      missionId: 'MSN-240609-02',
+      scenarioName: 'Santa Cruz Fog Belt',
+      outcome: 'aborted',
+      durationMin: 9,
+      hotspotsDetected: 0,
+      completedAt: 'Jun 9, 11:06 AM',
+    ),
+  ],
+  environmental: AnalyticsEnvironmental(
+    windMph: 14,
+    humidityPct: 38,
+    visibilityMi: 4.2,
+    smokeIndex: 'elevated',
+    thermalNoise: 'moderate',
+  ),
+  fleetUtilization: AnalyticsFleetUtilization(
+    activeDrones: 1,
+    availableDrones: 1,
+    chargingDrones: 1,
+    flightHoursToday: 3.6,
+    sortiesToday: 4,
+    avgBatteryAtLaunchPct: 81,
+  ),
+  integrationTargets: [
+    AnalyticsIntegrationTarget(
+      label: 'Analytics summary feed',
+      endpoint: 'GET /api/analytics/summary',
+      status: 'ready',
+    ),
+    AnalyticsIntegrationTarget(
+      label: 'Mission history archive',
+      endpoint: 'GET /api/analytics/missions',
+      status: 'planned',
+    ),
+    AnalyticsIntegrationTarget(
+      label: 'Thermal model scores',
+      endpoint: 'GET /api/analytics/thermal-scores',
+      status: 'planned',
+    ),
+    AnalyticsIntegrationTarget(
+      label: 'DJI telemetry stream',
+      endpoint: 'GET /api/dji/telemetry',
+      status: 'connected',
+    ),
+  ],
+);

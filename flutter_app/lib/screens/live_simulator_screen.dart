@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/mock_scenarios.dart';
+import '../models/drone_connection.dart';
 import '../models/scenario.dart';
 import '../models/simulation_layout.dart';
 import '../services/drone_api_client.dart';
@@ -10,11 +11,13 @@ import '../widgets/simulator/mission_command_map.dart';
 class LiveSimulatorScreen extends StatefulWidget {
   const LiveSimulatorScreen({
     required this.scenario,
+    required this.droneClient,
     required this.onScenarioChanged,
     super.key,
   });
 
   final Scenario scenario;
+  final DroneApiClient droneClient;
   final ValueChanged<Scenario> onScenarioChanged;
 
   @override
@@ -34,6 +37,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
   void initState() {
     super.initState();
     _loadLayoutForScenario(widget.scenario);
+    _loadDjiData();
   }
 
   @override
@@ -41,6 +45,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.scenario != widget.scenario) {
       _loadLayoutForScenario(widget.scenario);
+      _loadDjiData();
     }
   }
 
