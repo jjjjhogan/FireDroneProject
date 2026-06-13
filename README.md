@@ -172,6 +172,17 @@ MAP_API_KEY=
 
 Use `DRONE_CONNECTOR=mock` only for explicit development demos.
 
+### Local EMQX (Docker)
+
+For DJI Cloud API MQTT development:
+
+```bash
+cd backend
+docker compose -f docker-compose.emqx.yml up -d
+```
+
+See [docs/EMQX_SETUP.md](docs/EMQX_SETUP.md) for `.env` values and verification steps.
+
 ### Flutter Web
 
 ```bash

@@ -28,6 +28,7 @@ class Config:
     DJI_TELEMETRY_TTL_SECONDS = int(os.getenv("DJI_TELEMETRY_TTL_SECONDS", "300"))
     DJI_MAX_INGEST_DRONES = int(os.getenv("DJI_MAX_INGEST_DRONES", "16"))
     DJI_CLOUD_MQTT_PORT = int(os.getenv("DJI_CLOUD_MQTT_PORT", "8883"))
+    DJI_CLOUD_MQTT_USE_TLS = os.getenv("DJI_CLOUD_MQTT_USE_TLS", "true").lower() == "true"
     DJI_CLOUD_MQTT_USERNAME = os.getenv("DJI_CLOUD_MQTT_USERNAME", "")
     DJI_CLOUD_MQTT_PASSWORD = os.getenv("DJI_CLOUD_MQTT_PASSWORD", "")
     DJI_CLOUD_MQTT_CLIENT_ID = os.getenv(
