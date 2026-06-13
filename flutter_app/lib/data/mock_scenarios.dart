@@ -1,56 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../mock/simulation_fixtures.dart';
+import '../models/operations_enums.dart';
 import '../models/route_point.dart';
 import '../models/scenario.dart';
 import '../models/simulation_layout.dart';
 import '../models/thermal_front.dart';
 
-const scenarios = [
-  Scenario(
-    name: 'Min Mountains · California',
-    region: 'Mountain',
-    description:
-        'Steep ridgeline scan with smoke-obscured valleys and narrow return corridors.',
-    drones: 6,
-    risk: 'High heat',
-    color: Color(0xff315241),
-    seed: 4,
-    image: 'assets/images/scenario-mountain.jpg',
-  ),
-  Scenario(
-    name: 'Santa Cruz Fog Belt',
-    region: 'Coastal',
-    description:
-        'Low ceiling patrol that balances thermal locks against shifting marine fog.',
-    drones: 5,
-    risk: 'Visibility',
-    color: Color(0xff2f7d9a),
-    seed: 8,
-    image: 'assets/images/scenario-coastal.jpg',
-  ),
-  Scenario(
-    name: 'Yukon Boreal Line',
-    region: 'Boreal',
-    description:
-        'Long-range perimeter sweep through dense conifer canopy and cold uplifts.',
-    drones: 8,
-    risk: 'Canopy',
-    color: Color(0xff0e7656),
-    seed: 12,
-    image: 'assets/images/scenario-boreal.jpg',
-  ),
-  Scenario(
-    name: 'Colorado Plateau Watch',
-    region: 'Plateau',
-    description:
-        'Mesa-to-canyon mapping with relay handoffs and strong afternoon winds.',
-    drones: 7,
-    risk: 'Wind',
-    color: Color(0xffc2542d),
-    seed: 16,
-    image: 'assets/images/scenario-plateau.jpg',
-  ),
-];
+const scenarios = mockScenarios;
+
+String scenarioRiskLabel(Scenario scenario) {
+  return switch (scenario.difficulty) {
+    ScenarioDifficulty.basic => 'Low risk',
+    ScenarioDifficulty.intermediate => 'Visibility',
+    ScenarioDifficulty.advanced => 'High heat',
+    ScenarioDifficulty.extreme => 'Wind',
+  };
+}
 
 SimulationLayout defaultLayoutForScenario(Scenario scenario) {
   return defaultLayoutForSeed(scenario.seed);

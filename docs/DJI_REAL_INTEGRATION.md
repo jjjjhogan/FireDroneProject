@@ -59,7 +59,7 @@ The backend now reports distinct states so a real DJI setup is easier to debug:
 Operators can configure the local backend from the Flutter web app:
 
 1. Open `Live Simulator`.
-2. Click `Connect DJI`.
+2. Click `Connect DJI` in the mission map area or `Connect DJI Drone` in the official dashboard header.
 3. Choose `Cloud API` or `Mobile SDK`.
 4. Click `Generate token` to create the backend ingest token, or paste an existing token.
 5. Enter only the required connection fields.

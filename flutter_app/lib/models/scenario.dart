@@ -1,25 +1,39 @@
 import 'package:flutter/material.dart';
 
+import 'operations_enums.dart';
+
 class Scenario {
   const Scenario({
-    required this.name,
+    required this.scenarioId,
+    required this.title,
     required this.region,
     required this.description,
-    required this.drones,
-    required this.risk,
-    required this.color,
-    required this.seed,
-    required this.image,
+    required this.difficulty,
+    required this.simulatedDroneCount,
+    required this.simulatedAlertCount,
+    required this.tags,
+    this.color = const Color(0xff315241),
+    this.seed = 4,
+    this.image = 'assets/images/scenario-mountain.jpg',
   });
 
-  final String name;
+  final String scenarioId;
+  final String title;
   final String region;
   final String description;
-  final int drones;
-  final String risk;
+  final ScenarioDifficulty difficulty;
+  final int simulatedDroneCount;
+  final int simulatedAlertCount;
+  final List<String> tags;
   final Color color;
   final int seed;
   final String image;
+
+  String get name => title;
+
+  int get drones => simulatedDroneCount;
+
+  String get risk => difficulty.label;
 }
 
 const regions = ['All', 'Mountain', 'Coastal', 'Boreal', 'Plateau'];

@@ -34,3 +34,16 @@ class Config:
         "DJI_CLOUD_MQTT_CLIENT_ID",
         "firedrone-cloud-worker",
     )
+    APP_DATABASE_FILE = os.getenv(
+        "APP_DATABASE_FILE",
+        str(BASE_DIR / "instance" / "operations.sqlite3"),
+    )
+    AUTH_REQUIRED = os.getenv("AUTH_REQUIRED", "false").lower() == "true"
+    PUBLIC_SAFETY_TOKENS = os.getenv("PUBLIC_SAFETY_TOKENS", "")
+    MAP_PROVIDER = os.getenv("MAP_PROVIDER", "openstreetmap")
+    MAP_TILE_URL_TEMPLATE = os.getenv(
+        "MAP_TILE_URL_TEMPLATE",
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    )
+    MAP_ATTRIBUTION = os.getenv("MAP_ATTRIBUTION", "OpenStreetMap contributors")
+    MAP_API_KEY = os.getenv("MAP_API_KEY", "")

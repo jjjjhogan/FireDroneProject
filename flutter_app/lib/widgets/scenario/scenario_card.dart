@@ -8,15 +8,18 @@ class ScenarioCard extends StatelessWidget {
   const ScenarioCard({
     required this.scenario,
     required this.onOpenSimulator,
+    this.selected = false,
     super.key,
   });
 
   final Scenario scenario;
   final VoidCallback onOpenSimulator;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     return InfoCard(
+      borderColor: selected ? const Color(0xff0e7656) : const Color(0xffdfe8e4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -83,7 +86,13 @@ class ScenarioCard extends StatelessWidget {
                 label: '${scenario.drones} drones',
                 color: const Color(0xff0e7656),
               ),
+              StatusPill(
+                label: '${scenario.simulatedAlertCount} alerts',
+                color: const Color(0xffff9f1c),
+              ),
               StatusPill(label: scenario.risk, color: const Color(0xffc2542d)),
+              for (final tag in scenario.tags.take(2))
+                StatusPill(label: tag, color: const Color(0xff60716b)),
             ],
           ),
           const SizedBox(height: 14),

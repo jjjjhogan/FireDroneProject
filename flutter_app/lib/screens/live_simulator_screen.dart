@@ -5,20 +5,24 @@ import '../models/drone_connection.dart';
 import '../models/scenario.dart';
 import '../models/simulation_layout.dart';
 import '../services/drone_api_client.dart';
+import '../services/operations_api_client.dart';
 import '../widgets/common/info_card.dart';
 import '../widgets/simulator/dji_connection_dialog.dart';
 import '../widgets/simulator/mission_command_map.dart';
+import 'official_dashboard_screen.dart';
 
 class LiveSimulatorScreen extends StatefulWidget {
   const LiveSimulatorScreen({
     required this.scenario,
     required this.droneClient,
+    required this.operationsClient,
     required this.onScenarioChanged,
     super.key,
   });
 
   final Scenario scenario;
   final DroneApiClient droneClient;
+  final OperationsApiClient operationsClient;
   final ValueChanged<Scenario> onScenarioChanged;
 
   @override
@@ -132,8 +136,22 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
         final preview = data?[3] as MissionPreview?;
         final desktop = MediaQuery.sizeOf(context).width >= 1120;
 
+        Widget missionDashboard;
         if (!desktop) {
-          return CompactMissionCommandDashboard(
+          missionDashboard = CompactMissionCommandDashboard(
+            status: status,
+            fleet: fleet,
+            telemetry: telemetry,
+            preview: preview,
+            confirmResult: _confirmResult,
+            confirming: _confirming,
+            onStartMission: _confirmMissionPackage,
+            onPause: _pauseRun,
+            onAbort: _resetRun,
+            onConnectDji: _openDjiConnectionSetup,
+          );
+        } else {
+          missionDashboard = MissionCommandDashboard(
             status: status,
             fleet: fleet,
             telemetry: telemetry,
@@ -147,17 +165,16 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
           );
         }
 
-        return MissionCommandDashboard(
-          status: status,
-          fleet: fleet,
-          telemetry: telemetry,
-          preview: preview,
-          confirmResult: _confirmResult,
-          confirming: _confirming,
-          onStartMission: _confirmMissionPackage,
-          onPause: _pauseRun,
-          onAbort: _resetRun,
-          onConnectDji: _openDjiConnectionSetup,
+        return Column(
+          children: [
+            OfficialDashboardScreen(
+              scenario: widget.scenario,
+              operationsClient: widget.operationsClient,
+              onConnectDji: _openDjiConnectionSetup,
+            ),
+            const SizedBox(height: 12),
+            missionDashboard,
+          ],
         );
       },
     );
