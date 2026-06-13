@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../data/mock_analytics.dart';
+import '../models/analytics_snapshot.dart';
 import '../models/drone_connection.dart';
 import '../models/scenario.dart';
 import '../models/simulation_layout.dart';
@@ -15,6 +17,7 @@ abstract class DroneApiClient {
   );
   Future<List<DroneSummary>> fetchFleet();
   Future<TelemetrySnapshot> fetchTelemetry();
+  Future<AnalyticsSnapshot> fetchAnalytics();
   Future<MissionPreview> previewMission({
     required Scenario scenario,
     required SimulationLayout layout,
@@ -70,6 +73,11 @@ class ResilientDroneApiClient implements DroneApiClient {
   @override
   Future<TelemetrySnapshot> fetchTelemetry() {
     return _fromPrimary((client) => client.fetchTelemetry());
+  }
+
+  @override
+  Future<AnalyticsSnapshot> fetchAnalytics() {
+    return _fromPrimary((client) => client.fetchAnalytics());
   }
 
   @override
@@ -155,6 +163,11 @@ class HttpDroneApiClient implements DroneApiClient {
   @override
   Future<TelemetrySnapshot> fetchTelemetry() async {
     return TelemetrySnapshot.fromJson(await _getJson('/dji/telemetry'));
+  }
+
+  @override
+  Future<AnalyticsSnapshot> fetchAnalytics() async {
+    return AnalyticsSnapshot.fromJson(await _getJson('/analytics/summary'));
   }
 
   @override
@@ -262,6 +275,11 @@ class UnavailableDroneApiClient implements DroneApiClient {
       firePerimeterRisk: 'unknown',
       linkHealth: 'not-configured',
     );
+  }
+
+  @override
+  Future<AnalyticsSnapshot> fetchAnalytics() async {
+    return mockAnalyticsSnapshot;
   }
 
   @override

@@ -15,6 +15,7 @@ from app.ops import (
     normalize_detection_payload,
     simulate_command,
 )
+from app.ops.analytics import ANALYTICS_SUMMARY, analytics_graphs_payload
 from app.routes import api_bp
 from app.security import require_roles
 
@@ -25,6 +26,16 @@ def status():
         "message": "FireDrone API is running",
         "version": "0.1.0",
     }
+
+
+@api_bp.route("/analytics/summary", methods=["GET"])
+def analytics_summary():
+    return ANALYTICS_SUMMARY
+
+
+@api_bp.route("/analytics/graphs", methods=["GET"])
+def analytics_graphs():
+    return analytics_graphs_payload()
 
 
 def _dji_connector():
