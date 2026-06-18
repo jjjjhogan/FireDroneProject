@@ -43,6 +43,12 @@ class ResilientDroneApiClient implements DroneApiClient {
     }
   }
 
+  Future<T> _writePrimary<T>(
+    Future<T> Function(DroneApiClient client) request,
+  ) {
+    return request(_primary);
+  }
+
   @override
   Future<DjiStatus> fetchStatus() {
     return _fromPrimary((client) => client.fetchStatus());
@@ -55,14 +61,14 @@ class ResilientDroneApiClient implements DroneApiClient {
 
   @override
   Future<String> generateConnectionToken() {
-    return _fromPrimary((client) => client.generateConnectionToken());
+    return _writePrimary((client) => client.generateConnectionToken());
   }
 
   @override
   Future<DjiConnectionConfig> saveConnectionConfig(
     DjiConnectionRequest request,
   ) {
-    return _fromPrimary((client) => client.saveConnectionConfig(request));
+    return _writePrimary((client) => client.saveConnectionConfig(request));
   }
 
   @override
@@ -92,7 +98,7 @@ class ResilientDroneApiClient implements DroneApiClient {
 
   @override
   Future<MissionConfirmResult> confirmMission(MissionPreview preview) {
-    return _fromPrimary((client) => client.confirmMission(preview));
+    return _writePrimary((client) => client.confirmMission(preview));
   }
 }
 
@@ -249,14 +255,18 @@ class UnavailableDroneApiClient implements DroneApiClient {
 
   @override
   Future<String> generateConnectionToken() async {
-    return 'local-dev-token-${DateTime.now().microsecondsSinceEpoch}';
+    throw StateError(
+      'DJI backend is unavailable; cannot generate ingest token.',
+    );
   }
 
   @override
   Future<DjiConnectionConfig> saveConnectionConfig(
     DjiConnectionRequest request,
   ) {
-    return fetchConnectionConfig();
+    throw StateError(
+      'DJI backend is unavailable; connection settings were not saved.',
+    );
   }
 
   @override
@@ -310,12 +320,8 @@ class UnavailableDroneApiClient implements DroneApiClient {
 
   @override
   Future<MissionConfirmResult> confirmMission(MissionPreview preview) async {
-    return const MissionConfirmResult(
-      accepted: false,
-      blockedReason:
-          'DJI connector is not configured; live command dispatch is unavailable.',
-      missionId: null,
-      nextRequiredAction: 'Configure DJI Cloud API or Mobile SDK bridge',
+    throw StateError(
+      'DJI backend is unavailable; mission confirmation was not sent.',
     );
   }
 }
