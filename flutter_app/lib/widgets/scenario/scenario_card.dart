@@ -18,6 +18,7 @@ class ScenarioCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profile = regionProfileForScenario(scenario.region);
     return InfoCard(
       borderColor: selected ? const Color(0xff0e7656) : const Color(0xffdfe8e4),
       child: Column(
@@ -56,8 +57,8 @@ class ScenarioCard extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(10),
                       child: StatusPill(
-                        label: '${scenario.region} region',
-                        color: scenario.color,
+                        label: '${profile.label} region',
+                        color: profile.accent,
                       ),
                     ),
                   ),

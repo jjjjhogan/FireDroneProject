@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'operations_enums.dart';
 
+export 'region_profile.dart'
+    show regionProfiles, regionProfileFor, regionProfileForScenario, regions;
+
 class Scenario {
   const Scenario({
     required this.scenarioId,
@@ -35,5 +38,3 @@ class Scenario {
 
   String get risk => difficulty.label;
 }
-
-const regions = ['All', 'Mountain', 'Coastal', 'Boreal', 'Plateau'];

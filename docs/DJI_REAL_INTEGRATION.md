@@ -35,11 +35,14 @@ DJI_STATE_FILE=
 DJI_TELEMETRY_TTL_SECONDS=300
 DJI_MAX_INGEST_DRONES=16
 DJI_CLOUD_MQTT_PORT=8883
+DJI_CLOUD_MQTT_USE_TLS=true
 DJI_CLOUD_MQTT_USERNAME=
 DJI_CLOUD_MQTT_PASSWORD=
 DJI_CLOUD_MQTT_CLIENT_ID=firedrone-cloud-worker
 FIRE_DRONE_API_BASE=http://127.0.0.1:5000/api
 ```
+
+For local MQTT development with Docker EMQX, see [EMQX_SETUP.md](EMQX_SETUP.md). Typical local values: `DJI_CLOUD_API_MQTT_HOST=127.0.0.1`, `DJI_CLOUD_MQTT_PORT=1883`, `DJI_CLOUD_MQTT_USE_TLS=false`.
 
 Until these values are configured and a Cloud API adapter is connected, the app must show no aircraft.
 
@@ -194,11 +197,10 @@ Implemented bridge targets:
 
 ```text
 POST /api/dji/ingest/mobile-sdk
-mobile/android_bridge/MobileSdkBridgeClient.kt
 backend/scripts/post_mobile_sdk_state.py
 ```
 
-The Android bridge client accepts controller, aircraft, and flight snapshots and posts them to the backend. For local smoke testing without an Android build:
+For local smoke testing without an Android build:
 
 ```bash
 cd backend
@@ -207,7 +209,7 @@ python scripts/post_mobile_sdk_state.py --sample \
   --api-base http://127.0.0.1:5000/api
 ```
 
-In a real DJI Mobile SDK app, read aircraft state from SDK callbacks, build a `MobileSdkAircraftSnapshot` and `MobileSdkFlightSnapshot`, then call `MobileSdkBridgeClient.postSnapshot(...)` every 1-5 seconds while monitoring.
+In a real DJI Mobile SDK app, read aircraft state from SDK callbacks and POST the normalized payload to `/api/dji/ingest/mobile-sdk` every 1-5 seconds while monitoring.
 
 ## Current Safety Rules
 

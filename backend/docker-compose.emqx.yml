@@ -1,0 +1,28 @@
+# Local MQTT broker for DJI Cloud API development and integration tests.
+# Start: docker compose -f docker-compose.emqx.yml up -d
+# Stop:  docker compose -f docker-compose.emqx.yml down
+
+services:
+  emqx:
+    image: emqx/emqx:5.8.6
+    container_name: firedrone-emqx
+    restart: unless-stopped
+    ports:
+      - "1883:1883" # MQTT (plain — use with DJI_CLOUD_MQTT_USE_TLS=false)
+      - "8883:8883" # MQTT over TLS
+      - "8083:8083" # WebSocket
+      - "8084:8084" # WebSocket TLS
+      - "18083:18083" # Dashboard
+    environment:
+      EMQX_ALLOW_ANONYMOUS: "true"
+    volumes:
+      - emqx-data:/opt/emqx/data
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+volumes:
+  emqx-data:

@@ -143,7 +143,7 @@ void main() {
       expect(mountain.first.scenarioId, 'canyon-ridge');
 
       final all = await scenarioService.listScenarios();
-      expect(all.length, greaterThanOrEqualTo(4));
+      expect(all.length, greaterThanOrEqualTo(10));
     },
   );
 

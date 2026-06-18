@@ -24,7 +24,6 @@ The prototype is intended to look serious and operational while staying honest a
 
 - Frontend: Flutter web app in `flutter_app/`
 - Backend: Flask API in `backend/`
-- Legacy mobile reference: `mobile/`
 - Default mode: simulation and read-only connector status
 - Real hardware command dispatch: disabled
 - Mission commands in the UI: simulated only
@@ -121,7 +120,6 @@ FireDroneProject/
 │   ├── lib/safety/              # SafetyGateService
 │   ├── lib/mock/                # Simulation fixtures
 │   └── test/                    # Widget and service/model tests
-├── mobile/                      # Legacy Flutter mobile reference
 └── docs/
     ├── DJI_REAL_INTEGRATION.md
     ├── GITHUB_INTEGRATION_REVIEW.md
@@ -185,6 +183,17 @@ MAP_SEARCH_LIMIT=5
 The public Nominatim endpoint is a limited free service. Keep searches user-triggered, avoid autocomplete or bulk geocoding, cache repeated queries before higher-volume use, and stay under the OpenStreetMap Foundation usage policy.
 
 Use `DRONE_CONNECTOR=mock` only for explicit development demos.
+
+### Local EMQX (Docker)
+
+For DJI Cloud API MQTT development:
+
+```bash
+cd backend
+docker compose -f docker-compose.emqx.yml up -d
+```
+
+See [docs/EMQX_SETUP.md](docs/EMQX_SETUP.md) for `.env` values and verification steps.
 
 ### Flutter Web
 

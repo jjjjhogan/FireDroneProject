@@ -142,7 +142,7 @@ void main() {
     expect(find.text('Selected Scenario'), findsOneWidget);
     expect(find.text('Simulated mission planning package'), findsOneWidget);
     expect(find.text('Open Selected Scenario'), findsOneWidget);
-    expect(find.text('Open in Simulator'), findsNWidgets(4));
+    expect(find.text('Open in Simulator'), findsNWidgets(10));
     expect(find.text('San Bernardino Mountain Ridge'), findsWidgets);
     expect(find.text('Search scenarios'), findsOneWidget);
     expect(find.text('6 drones'), findsWidgets);
