@@ -5,6 +5,16 @@ Use this for DJI Cloud API MQTT development before Pilot 2 or Dock are on the ne
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) running on Windows
+- Backend venv with all requirements (includes `paho-mqtt` for the in-app bridge):
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+If `cloudBridge.state` is `missing-dependency`, install deps and POST `/api/dji/connection` again (or restart Flask after `pip install`).
 
 ## Start EMQX
 
