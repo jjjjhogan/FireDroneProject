@@ -16,13 +16,6 @@ class TestConfig:
     ALLOW_DJI_COMMANDS = False
 
 
-class RealDataDefaultConfig:
-    TESTING = True
-    SECRET_KEY = "test"
-    DRONE_CONNECTOR = "real"
-    ALLOW_DJI_COMMANDS = False
-
-
 class DjiApiTest(unittest.TestCase):
     def setUp(self):
         self.app = create_app(TestConfig)
@@ -102,7 +95,21 @@ class DjiApiTest(unittest.TestCase):
 
 class DjiRealDataModeTest(unittest.TestCase):
     def setUp(self):
-        self.app = create_app(RealDataDefaultConfig)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.runtime_config_file = Path(self.temp_dir.name) / "dji-runtime-config.json"
+        config = type(
+            "RealDataModeConfig",
+            (),
+            {
+                "TESTING": True,
+                "SECRET_KEY": "test",
+                "DRONE_CONNECTOR": "real",
+                "ALLOW_DJI_COMMANDS": False,
+                "DJI_RUNTIME_CONFIG_FILE": str(self.runtime_config_file),
+            },
+        )
+        self.app = create_app(config)
         self.client = self.app.test_client()
 
     def test_real_mode_reports_not_configured_without_fake_fleet(self):
@@ -145,6 +152,7 @@ class DjiRealIngestTest(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
         self.state_file = Path(self.temp_dir.name) / "dji-state.json"
+        self.runtime_config_file = Path(self.temp_dir.name) / "dji-runtime-config.json"
         config = type(
             "RealIngestConfig",
             (),
@@ -155,6 +163,7 @@ class DjiRealIngestTest(unittest.TestCase):
                 "ALLOW_DJI_COMMANDS": False,
                 "DJI_INGEST_TOKEN": "bridge-secret",
                 "DJI_STATE_FILE": str(self.state_file),
+                "DJI_RUNTIME_CONFIG_FILE": str(self.runtime_config_file),
                 "DJI_TELEMETRY_TTL_SECONDS": 300,
             },
         )
