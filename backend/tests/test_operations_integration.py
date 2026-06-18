@@ -3,6 +3,8 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+import gc
+from contextlib import closing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -43,6 +45,9 @@ class OpsIntegrationTest(unittest.TestCase):
         )
         self.app = create_app(config)
         self.client = self.app.test_client()
+
+    def tearDown(self):
+        gc.collect()
 
     def auth(self, token):
         return {"Authorization": f"Bearer {token}"}
@@ -131,7 +136,7 @@ class OpsIntegrationTest(unittest.TestCase):
         self.assertEqual(review.status_code, 200)
         self.assertEqual(review.get_json()["alert"]["status"], "Confirmed")
 
-        with sqlite3.connect(self.db_file) as connection:
+        with closing(sqlite3.connect(self.db_file)) as connection:
             audit_count = connection.execute("select count(*) from audit_entries").fetchone()[0]
         self.assertGreaterEqual(audit_count, 1)
 

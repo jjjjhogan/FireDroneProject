@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -49,6 +50,14 @@ class OperationsStore:
         connection.row_factory = sqlite3.Row
         self._ensure_schema(connection)
         return connection
+
+    @contextmanager
+    def _session(self):
+        connection = self._connect()
+        try:
+            yield connection
+        finally:
+            connection.close()
 
     def _ensure_schema(self, connection):
         connection.executescript(
@@ -103,7 +112,7 @@ class OperationsStore:
             "targetId": target_id or "",
             "details": details or "",
         }
-        with self._connect() as connection:
+        with self._session() as connection:
             connection.execute(
                 """
                 insert into audit_entries
@@ -124,7 +133,7 @@ class OperationsStore:
         return entry
 
     def list_audit(self, limit=100):
-        with self._connect() as connection:
+        with self._session() as connection:
             rows = connection.execute(
                 """
                 select entry_id, timestamp, actor, role, action, target_id, details
@@ -165,7 +174,7 @@ class OperationsStore:
             "notes": alert.get("notes", ""),
             "raw": alert.get("raw", alert),
         }
-        with self._connect() as connection:
+        with self._session() as connection:
             connection.execute(
                 """
                 insert into alerts
@@ -208,7 +217,7 @@ class OperationsStore:
         return stored
 
     def list_alerts(self):
-        with self._connect() as connection:
+        with self._session() as connection:
             rows = connection.execute(
                 """
                 select event_id, detection_type, confidence, severity, lat, lon,
@@ -221,7 +230,7 @@ class OperationsStore:
         return [self._alert_from_row(row) for row in rows]
 
     def get_alert(self, event_id):
-        with self._connect() as connection:
+        with self._session() as connection:
             row = connection.execute(
                 """
                 select event_id, detection_type, confidence, severity, lat, lon,
@@ -238,7 +247,7 @@ class OperationsStore:
 
     def review_alert(self, event_id, status, reviewer, notes):
         review_timestamp = utc_now_iso()
-        with self._connect() as connection:
+        with self._session() as connection:
             cursor = connection.execute(
                 """
                 update alerts
@@ -263,7 +272,7 @@ class OperationsStore:
             }
             for key, value in SAFETY_CHECKLIST_DEFAULTS.items()
         }
-        with self._connect() as connection:
+        with self._session() as connection:
             rows = connection.execute(
                 """
                 select key, status, notes, engaged, updated_at, updated_by
@@ -307,7 +316,7 @@ class OperationsStore:
             engaged = bool(value.get("engaged", current["engaged"]))
             rows.append((key, status, notes, 1 if engaged else 0, timestamp, actor))
 
-        with self._connect() as connection:
+        with self._session() as connection:
             connection.executemany(
                 """
                 insert into safety_checklist

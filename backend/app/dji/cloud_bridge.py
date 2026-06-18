@@ -81,7 +81,11 @@ class CloudMqttBridgeManager:
         client = mqtt.Client(client_id=client_id)
         if username or password:
             client.username_pw_set(username, password)
-        client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
+        use_tls = config.get("DJI_CLOUD_MQTT_USE_TLS", True)
+        if isinstance(use_tls, str):
+            use_tls = use_tls.strip().lower() in {"1", "true", "yes", "on"}
+        if use_tls:
+            client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
 
         def on_connect(client, userdata, flags, reason_code):
             if int(reason_code) != 0:
