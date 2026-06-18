@@ -194,11 +194,10 @@ Implemented bridge targets:
 
 ```text
 POST /api/dji/ingest/mobile-sdk
-mobile/android_bridge/MobileSdkBridgeClient.kt
 backend/scripts/post_mobile_sdk_state.py
 ```
 
-The Android bridge client accepts controller, aircraft, and flight snapshots and posts them to the backend. For local smoke testing without an Android build:
+For local smoke testing without an Android build:
 
 ```bash
 cd backend
@@ -207,7 +206,7 @@ python scripts/post_mobile_sdk_state.py --sample \
   --api-base http://127.0.0.1:5000/api
 ```
 
-In a real DJI Mobile SDK app, read aircraft state from SDK callbacks, build a `MobileSdkAircraftSnapshot` and `MobileSdkFlightSnapshot`, then call `MobileSdkBridgeClient.postSnapshot(...)` every 1-5 seconds while monitoring.
+In a real DJI Mobile SDK app, read aircraft state from SDK callbacks and POST the normalized payload to `/api/dji/ingest/mobile-sdk` every 1-5 seconds while monitoring.
 
 ## Current Safety Rules
 

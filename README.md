@@ -24,7 +24,6 @@ The prototype is intended to look serious and operational while staying honest a
 
 - Frontend: Flutter web app in `flutter_app/`
 - Backend: Flask API in `backend/`
-- Legacy mobile reference: `mobile/`
 - Default mode: simulation and read-only connector status
 - Real hardware command dispatch: disabled
 - Mission commands in the UI: simulated only
@@ -118,7 +117,6 @@ FireDroneProject/
 │   ├── lib/safety/              # SafetyGateService
 │   ├── lib/mock/                # Simulation fixtures
 │   └── test/                    # Widget and service/model tests
-├── mobile/                      # Legacy Flutter mobile reference
 └── docs/
     ├── DJI_REAL_INTEGRATION.md
     ├── GITHUB_INTEGRATION_REVIEW.md

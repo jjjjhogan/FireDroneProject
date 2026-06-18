@@ -9,6 +9,7 @@ import '../widgets/common/metric_card.dart';
 import '../widgets/common/responsive_grid.dart';
 import '../widgets/common/section_header.dart';
 import '../widgets/scenario/hero_panel.dart';
+import '../widgets/scenario/region_profile_panel.dart';
 import '../widgets/scenario/scenario_card.dart';
 
 class ScenarioLibraryScreen extends StatefulWidget {
@@ -172,16 +173,22 @@ class _ScenarioLibraryScreenState extends State<ScenarioLibraryScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: regions
-                    .map(
-                      (item) => ChoiceChip(
-                        label: Text(item),
-                        selected: _region == item,
-                        onSelected: (_) => _setRegion(item),
-                      ),
-                    )
-                    .toList(),
+                children: regions.map((item) {
+                  final profile = regionProfileFor(item);
+                  return ChoiceChip(
+                    avatar: profile == null
+                        ? null
+                        : Icon(profile.icon, size: 16, color: profile.accent),
+                    label: Text(item),
+                    selected: _region == item,
+                    onSelected: (_) => _setRegion(item),
+                  );
+                }).toList(),
               ),
+              if (_region != 'All') ...[
+                const SizedBox(height: 12),
+                RegionProfilePanel(profile: regionProfileForScenario(_region)),
+              ],
             ],
           ),
         ),
