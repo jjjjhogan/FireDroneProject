@@ -12,7 +12,7 @@ AeroScout Command is a Flutter web prototype for official-facing wildfire drone 
 - Official dashboard summary cards
 - Mission overview
 - Drone telemetry panel
-- Operations map placeholder
+- Operations map with default satellite imagery, switchable OpenStreetMap raster tiles, and backend GeoJSON overlays
 - Fire/smoke alert review
 - Scenario Library with search, filters, selected scenario detail, and simulator actions
 - Safety-gated simulated command panel
@@ -142,19 +142,19 @@ Implemented now:
 - SQLite persistence for backend alert and audit APIs
 - Bearer-token RBAC for viewer/operator/admin/ingest prototype roles
 - Map provider configuration endpoint
+- GeoJSON map layer endpoint for incident perimeter, mission geofence, and no-fly buffer overlays
 - PX4 SITL and MAVLink read-only telemetry ingest endpoints
 - YOLO/thermal alert ingest endpoint
 - Persistent safety checklist endpoint for geofence, Remote ID, airspace approval, and emergency stop simulation state
 
 Still mocked or placeholder:
 
-- Operations map geometry
 - Validated production fire/smoke detection model
 - Geofence validation
 - Remote ID hardware proof
 - Airspace approval authority integration
 - Emergency stop hardware behavior
-- Production map/geofence layer validation
+- Authoritative production GIS/geofence source validation
 - Production identity provider and token lifecycle
 
 ## License And Copying Notes

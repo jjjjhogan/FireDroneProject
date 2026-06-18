@@ -47,3 +47,23 @@ class Config:
     )
     MAP_ATTRIBUTION = os.getenv("MAP_ATTRIBUTION", "OpenStreetMap contributors")
     MAP_API_KEY = os.getenv("MAP_API_KEY", "")
+    MAP_DEFAULT_BASEMAP = os.getenv("MAP_DEFAULT_BASEMAP", "satellite")
+    MAP_IMAGERY_PROVIDER = os.getenv("MAP_IMAGERY_PROVIDER", "arcgis-world-imagery")
+    MAP_IMAGERY_TILE_URL_TEMPLATE = os.getenv(
+        "MAP_IMAGERY_TILE_URL_TEMPLATE",
+        "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    )
+    MAP_IMAGERY_ATTRIBUTION = os.getenv(
+        "MAP_IMAGERY_ATTRIBUTION",
+        "Powered by Esri | Sources: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    )
+    MAP_SEARCH_PROVIDER = os.getenv("MAP_SEARCH_PROVIDER", "nominatim")
+    NOMINATIM_SEARCH_URL = os.getenv(
+        "NOMINATIM_SEARCH_URL",
+        "https://nominatim.openstreetmap.org/search",
+    )
+    NOMINATIM_USER_AGENT = os.getenv(
+        "NOMINATIM_USER_AGENT",
+        "FireDroneProject/0.1 public-safety-prototype",
+    )
+    MAP_SEARCH_LIMIT = int(os.getenv("MAP_SEARCH_LIMIT", "5"))

@@ -15,6 +15,8 @@ Current progress:
 - Alert and audit persistence use SQLite through `OperationsStore`.
 - `AUTH_REQUIRED=true` enables bearer-token RBAC for viewer/operator/admin/ingest roles.
 - `/api/map/config` exposes tile-provider configuration without leaking secrets.
+- `/api/map/geofence` exposes backend GeoJSON incident perimeter, mission geofence, and no-fly buffer layers.
+- `/api/map/search` proxies user-triggered OpenStreetMap Nominatim place/address search for free real-world lookup.
 - `/api/commands/simulate` records simulation-only command attempts and never sends hardware commands.
 - `/api/safety/checklist` persists operator-visible geofence, Remote ID, airspace approval, and emergency stop checklist state.
 
@@ -156,20 +158,34 @@ Detection event fields:
 
 All model output must remain unconfirmed until operator review.
 
-## Phase 7: Real Map Provider
+## Phase 7: Map Provider And GIS Layers
 
-The current map area is a prototype placeholder. Future map work should add:
+Current implementation:
 
-- Real basemap provider
-- Incident perimeter layers
+- Default satellite imagery basemap through `/api/map/config`
+- Switchable OpenStreetMap raster street tile basemap through `/api/map/config`
+- Backend GeoJSON layer through `/api/map/geofence`
+- Backend mission map layer through `/api/map/mission`
+- Backend-proxied Nominatim search through `/api/map/search`
+- Tile attribution and usage policy status from `/api/map/config`
+- Incident perimeter, mission geofence, and no-fly buffer feature types
+- Route, alert, and drone/planned-launch markers sourced from backend map data
+- Backend-computed map bounds used by Flutter for initial viewport fitting
+- User-entered place/address search that focuses the Flutter map on real-world results
+- Layer source and freshness metadata
+- Flutter `flutter_map` rendering for backend GIS polygons and mission markers
+
+Future map work should add:
+
 - Terrain and road overlays
-- No-fly areas
-- Launch and landing zones
-- Geofence polygons
-- Alert markers
+- Dedicated production tile provider such as Mapbox, ArcGIS, or an agency tile service
+- Dedicated geocoding provider or self-hosted Nominatim before higher-volume production use
+- Offline tile packs for field operations
 - Drone positions
 - Route preview
-- Layer source and freshness labels
+- Authoritative incident GIS imports
+- Airspace/TFR provider integration
+- Geofence validation against aircraft/controller limits
 
 ## Phase 8: Auth, RBAC, And Secure Deployment
 

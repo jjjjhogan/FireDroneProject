@@ -39,7 +39,7 @@ The prototype is intended to look serious and operational while staying honest a
 - Clear `Simulation Mode`, `Real Hardware Disabled`, and `Not production ready` labels
 - Mission overview panel
 - Drone telemetry panel
-- Operations map placeholder with route, drone, and alert overlays
+- Operations map with default satellite imagery, switchable OpenStreetMap street tiles, backend GeoJSON geofence, route, drone, and alert overlays
 - Fire/smoke alert review workflow
 - Safety-gated simulated command panel
 - Audit log for alert reviews and command attempts
@@ -71,6 +71,9 @@ The backend now includes a SQLite-backed operations layer for public-safety prot
 - `GET /api/auth/session`
 - `GET /api/integrations/status`
 - `GET /api/map/config`
+- `GET /api/map/geofence`
+- `GET /api/map/mission`
+- `GET /api/map/search?q=<place-or-address>`
 - `GET /api/safety/checklist`
 - `POST /api/safety/checklist`
 - `GET /api/alerts`
@@ -135,11 +138,12 @@ The current MVP uses mocked or placeholder data for:
 - Drone telemetry cards in the official dashboard
 - Fire/smoke alert events
 - Mission overview fixture
-- Operations map route and alert overlays
+- Operations map route and alert overlays layered over backend GIS data
+- User-triggered real place search through backend-proxied OpenStreetMap Nominatim
 - Scenario catalog
 - Geofence validation, Remote ID hardware proof, airspace authority verification, and emergency stop hardware behavior
 
-The backend now persists alerts, audit entries, and an operator safety checklist in SQLite. It can ingest read-only PX4 SITL / MAVLink telemetry plus YOLO/thermal alert events. Geofence, Remote ID, airspace approval, and emergency stop are represented as auditable checklist/simulation state, not validated aircraft or regulatory compliance. The Flutter app remains simulation-first and does not dispatch real aircraft commands.
+The backend now persists alerts, audit entries, and an operator safety checklist in SQLite. It can ingest read-only PX4 SITL / MAVLink telemetry plus YOLO/thermal alert events. It exposes tile-provider config with attribution and tile usage policy at `/api/map/config`, GeoJSON geofence layers at `/api/map/geofence`, mission route / alert / drone map markers plus computed bounds at `/api/map/mission`, and user-triggered place/address search at `/api/map/search`. The planning map defaults to a satellite imagery basemap so the incident surface looks like a real-world map, while OpenStreetMap street tiles remain available as a switchable layer. The default search provider is OpenStreetMap Nominatim, proxied through Flask so the app can set an identifying User-Agent and later swap providers without changing Flutter. The Flutter map fits its initial viewport to backend bounds and can focus on a searched real-world place. Geofence, Remote ID, airspace approval, and emergency stop are represented as auditable checklist/simulation state, not validated aircraft or regulatory compliance. The Flutter app remains simulation-first and does not dispatch real aircraft commands.
 
 ## Run Locally
 
@@ -168,7 +172,17 @@ MAP_PROVIDER=openstreetmap
 MAP_TILE_URL_TEMPLATE=https://tile.openstreetmap.org/{z}/{x}/{y}.png
 MAP_ATTRIBUTION=OpenStreetMap contributors
 MAP_API_KEY=
+MAP_DEFAULT_BASEMAP=satellite
+MAP_IMAGERY_PROVIDER=arcgis-world-imagery
+MAP_IMAGERY_TILE_URL_TEMPLATE=https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
+MAP_IMAGERY_ATTRIBUTION=Powered by Esri | Sources: Esri, Maxar, Earthstar Geographics, and the GIS User Community
+MAP_SEARCH_PROVIDER=nominatim
+NOMINATIM_SEARCH_URL=https://nominatim.openstreetmap.org/search
+NOMINATIM_USER_AGENT=FireDroneProject/0.1 public-safety-prototype
+MAP_SEARCH_LIMIT=5
 ```
+
+The public Nominatim endpoint is a limited free service. Keep searches user-triggered, avoid autocomplete or bulk geocoding, cache repeated queries before higher-volume use, and stay under the OpenStreetMap Foundation usage policy.
 
 Use `DRONE_CONNECTOR=mock` only for explicit development demos.
 
@@ -232,7 +246,7 @@ Future work should proceed in simulation and read-only phases first:
 - ArduPilot compatibility through backend adapters
 - Drone camera stream and thermal camera ingest
 - YOLO fire/smoke detection API
-- Real map provider and incident layers
+- Production GIS sources, terrain overlays, and authoritative airspace layers
 - Authentication, RBAC, secure deployment, and incident command workflow
 - Persistent audit log and backend alert review API
 - Persistent safety checklist for geofence, Remote ID, airspace approval, and emergency stop simulation state
@@ -246,7 +260,8 @@ See [docs/FUTURE_INTEGRATION.md](docs/FUTURE_INTEGRATION.md).
 - Not a ground control station
 - No real aircraft command dispatch
 - SQLite persistence is prototype-grade, not incident-certified storage
-- Map provider config exists, but incident GIS/geofence layer validation is still future work
+- Satellite and OpenStreetMap basemaps plus backend GeoJSON geofence layers exist, but authoritative incident GIS and regulatory validation are still future work
+- Nominatim search is a free public lookup path for development and moderate manual use, not a production geocoding SLA
 - Safety checklist state is auditable, but does not prove regulatory or aircraft compliance
 - RBAC is bearer-token prototype auth, not enterprise identity management
 - No validated fire detection model in the Flutter app

@@ -63,9 +63,9 @@ Every review action must create an audit entry. Model confidence and severity ar
 
 ## Safety Checklist
 
-The backend exposes `/api/safety/checklist` for operator-visible geofence, Remote ID, airspace approval, and emergency stop status. These records are persisted and audited so a team can see what has been reviewed during a prototype session.
+The backend exposes `/api/safety/checklist` for operator-visible geofence, Remote ID, airspace approval, and emergency stop status. It also exposes `/api/map/geofence` as a GeoJSON visualization layer for incident perimeter, mission geofence, and no-fly buffer overlays. These records are persisted or source-labelled so a team can see what has been reviewed during a prototype session.
 
-Checklist state is not automatic compliance. Before any hardware pathway is considered, geofence checks must be connected to verified mission geometry, local restrictions, incident boundaries, temporary flight restrictions, launch site constraints, and aircraft-specific limits. Remote ID and airspace approval must be backed by real aircraft, pilot, and authority records.
+Checklist and GeoJSON layer state are not automatic compliance. Before any hardware pathway is considered, geofence checks must be connected to verified mission geometry, local restrictions, incident boundaries, temporary flight restrictions, launch site constraints, and aircraft-specific limits. Remote ID and airspace approval must be backed by real aircraft, pilot, and authority records.
 
 ## Emergency Stop Boundary
 

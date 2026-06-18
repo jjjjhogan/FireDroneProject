@@ -360,34 +360,27 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
           right: _TelemetryPanel(telemetry: _telemetry),
         ),
         const SizedBox(height: 12),
-        _ResponsivePair(
-          left: _OperationsMapPanel(
-            telemetry: _telemetry,
-            events: _events,
-            scenario: widget.scenario,
+        _AlertReviewPanel(
+          events: _events,
+          selectedAlert: _selectedAlert,
+          selectedAlertIndex: _selectedAlertIndex,
+          notesController: _notesController,
+          reviewMessage: _reviewMessage,
+          onSelectAlert: _selectAlert,
+          onConfirm: () => _reviewAlert(
+            status: AlertStatus.confirmed,
+            action: 'Confirmed alert',
+            visibleMessage: 'Alert confirmed',
           ),
-          right: _AlertReviewPanel(
-            events: _events,
-            selectedAlert: _selectedAlert,
-            selectedAlertIndex: _selectedAlertIndex,
-            notesController: _notesController,
-            reviewMessage: _reviewMessage,
-            onSelectAlert: _selectAlert,
-            onConfirm: () => _reviewAlert(
-              status: AlertStatus.confirmed,
-              action: 'Confirmed alert',
-              visibleMessage: 'Alert confirmed',
-            ),
-            onFalsePositive: () => _reviewAlert(
-              status: AlertStatus.falsePositive,
-              action: 'Marked false positive',
-              visibleMessage: 'Alert marked false positive',
-            ),
-            onResolved: () => _reviewAlert(
-              status: AlertStatus.resolved,
-              action: 'Resolved alert',
-              visibleMessage: 'Alert resolved',
-            ),
+          onFalsePositive: () => _reviewAlert(
+            status: AlertStatus.falsePositive,
+            action: 'Marked false positive',
+            visibleMessage: 'Alert marked false positive',
+          ),
+          onResolved: () => _reviewAlert(
+            status: AlertStatus.resolved,
+            action: 'Resolved alert',
+            visibleMessage: 'Alert resolved',
           ),
         ),
         const SizedBox(height: 12),
@@ -436,11 +429,10 @@ class _ResponsivePair extends StatelessWidget {
 }
 
 class _Panel extends StatelessWidget {
-  const _Panel({required this.title, required this.child, this.trailing});
+  const _Panel({required this.title, required this.child});
 
   final String title;
   final Widget child;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -460,7 +452,6 @@ class _Panel extends StatelessWidget {
                   ),
                 ),
               ),
-              trailing ?? const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 12),
@@ -739,193 +730,6 @@ class _DroneTelemetryRow extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ],
-    );
-  }
-}
-
-class _OperationsMapPanel extends StatelessWidget {
-  const _OperationsMapPanel({
-    required this.telemetry,
-    required this.events,
-    required this.scenario,
-  });
-
-  final List<DroneTelemetry> telemetry;
-  final List<FireDetectionEvent> events;
-  final Scenario scenario;
-
-  @override
-  Widget build(BuildContext context) {
-    return _Panel(
-      title: 'OPERATIONS MAP',
-      trailing: Text(
-        scenario.region,
-        style: const TextStyle(
-          color: Color(0xff60716b),
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: CustomPaint(
-              painter: _OperationsMapPainter(
-                telemetry: telemetry,
-                events: events,
-                baseColor: scenario.color,
-              ),
-              child: Container(),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _LegendChip(color: const Color(0xff31a354), label: 'Drone'),
-              _LegendChip(color: const Color(0xfff15a24), label: 'Alert'),
-              _LegendChip(color: scenario.color, label: 'Route'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OperationsMapPainter extends CustomPainter {
-  const _OperationsMapPainter({
-    required this.telemetry,
-    required this.events,
-    required this.baseColor,
-  });
-
-  final List<DroneTelemetry> telemetry;
-  final List<FireDetectionEvent> events;
-  final Color baseColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final background = Paint()..color = const Color(0xff13211d);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(8)),
-      background,
-    );
-
-    final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.07)
-      ..strokeWidth = 1;
-    for (var i = 1; i < 6; i += 1) {
-      final x = size.width * i / 6;
-      final y = size.height * i / 6;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    final routePaint = Paint()
-      ..color = baseColor.withValues(alpha: 0.95)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final route = Path()
-      ..moveTo(size.width * 0.13, size.height * 0.74)
-      ..cubicTo(
-        size.width * 0.28,
-        size.height * 0.56,
-        size.width * 0.38,
-        size.height * 0.34,
-        size.width * 0.52,
-        size.height * 0.46,
-      )
-      ..cubicTo(
-        size.width * 0.66,
-        size.height * 0.58,
-        size.width * 0.75,
-        size.height * 0.27,
-        size.width * 0.88,
-        size.height * 0.35,
-      );
-    canvas.drawPath(route, routePaint);
-
-    final firePaint = Paint()
-      ..color = const Color(0xfff15a24).withValues(alpha: 0.25)
-      ..style = PaintingStyle.fill;
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width * 0.67, size.height * 0.45),
-        width: size.width * 0.28,
-        height: size.height * 0.22,
-      ),
-      firePaint,
-    );
-
-    for (var i = 0; i < telemetry.length; i += 1) {
-      final point = Offset(
-        size.width * (0.23 + i * 0.22),
-        size.height * (0.65 - i * 0.12),
-      );
-      canvas.drawCircle(point, 7, Paint()..color = const Color(0xff31a354));
-      canvas.drawCircle(
-        point,
-        13,
-        Paint()
-          ..color = const Color(0xff31a354).withValues(alpha: 0.18)
-          ..style = PaintingStyle.fill,
-      );
-    }
-
-    for (var i = 0; i < events.length; i += 1) {
-      final event = events[i];
-      final point = Offset(
-        size.width * (0.56 + (i % 2) * 0.18),
-        size.height * (0.42 + i * 0.09),
-      );
-      canvas.drawCircle(
-        point,
-        event.status == AlertStatus.resolved ? 5 : 8,
-        Paint()
-          ..color = event.status == AlertStatus.resolved
-              ? const Color(0xff8b9a96)
-              : const Color(0xffff6b35),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _OperationsMapPainter oldDelegate) {
-    return telemetry != oldDelegate.telemetry ||
-        events != oldDelegate.events ||
-        baseColor != oldDelegate.baseColor;
-  }
-}
-
-class _LegendChip extends StatelessWidget {
-  const _LegendChip({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 9,
-          height: 9,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xff60716b),
-            fontWeight: FontWeight.w700,
-          ),
         ),
       ],
     );

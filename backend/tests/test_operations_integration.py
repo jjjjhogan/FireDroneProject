@@ -4,10 +4,25 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import create_app
+
+
+class FakeUrlopenResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def read(self):
+        return json.dumps(self.payload).encode("utf-8")
 
 
 class OpsIntegrationTest(unittest.TestCase):
@@ -39,6 +54,20 @@ class OpsIntegrationTest(unittest.TestCase):
                 "MAP_TILE_URL_TEMPLATE": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 "MAP_ATTRIBUTION": "OpenStreetMap contributors",
                 "MAP_API_KEY": "",
+                "MAP_DEFAULT_BASEMAP": "satellite",
+                "MAP_IMAGERY_PROVIDER": "arcgis-world-imagery",
+                "MAP_IMAGERY_TILE_URL_TEMPLATE": (
+                    "https://services.arcgisonline.com/ArcGIS/rest/services/"
+                    "World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                ),
+                "MAP_IMAGERY_ATTRIBUTION": (
+                    "Powered by Esri | Sources: Esri, Maxar, Earthstar "
+                    "Geographics, and the GIS User Community"
+                ),
+                "MAP_SEARCH_PROVIDER": "nominatim",
+                "NOMINATIM_SEARCH_URL": "https://nominatim.openstreetmap.org/search",
+                "NOMINATIM_USER_AGENT": "FireDroneProject Tests",
+                "MAP_SEARCH_LIMIT": 4,
             },
         )
         self.app = create_app(config)
@@ -71,7 +100,150 @@ class OpsIntegrationTest(unittest.TestCase):
         self.assertIn("{z}", data["tileUrlTemplate"])
         self.assertEqual(data["attribution"], "OpenStreetMap contributors")
         self.assertFalse(data["requiresApiKey"])
+        self.assertEqual(data["defaultBasemap"], "satellite")
+        self.assertEqual(len(data["basemaps"]), 2)
+        satellite = next(
+            basemap for basemap in data["basemaps"] if basemap["id"] == "satellite"
+        )
+        self.assertEqual(satellite["provider"], "arcgis-world-imagery")
+        self.assertIn("World_Imagery", satellite["tileUrlTemplate"])
+        self.assertIn("Powered by Esri", satellite["attribution"])
+        self.assertEqual(satellite["policy"]["status"], "development-imagery")
+        streets = next(
+            basemap for basemap in data["basemaps"] if basemap["id"] == "streets"
+        )
+        self.assertEqual(streets["provider"], "openstreetmap")
         self.assertNotIn("MAP_API_KEY", json.dumps(data))
+        self.assertEqual(data["tilePolicy"]["status"], "development-only")
+        self.assertFalse(data["tilePolicy"]["productionReady"])
+        self.assertIn("production", data["tilePolicy"]["message"].lower())
+        self.assertEqual(data["incidentLayerStatus"], "geojson")
+        self.assertEqual(data["geofenceLayerStatus"], "geojson")
+        self.assertEqual(data["geofenceLayerEndpoint"], "/api/map/geofence")
+        self.assertEqual(data["missionLayerEndpoint"], "/api/map/mission")
+
+    def test_map_search_requires_query(self):
+        response = self.client.get(
+            "/api/map/search",
+            headers=self.auth("viewer-token"),
+        )
+
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data["accepted"])
+        self.assertIn("q", data["error"])
+
+    @patch("urllib.request.urlopen")
+    def test_map_search_proxies_nominatim_and_returns_real_place_results(self, urlopen):
+        urlopen.return_value = FakeUrlopenResponse(
+            [
+                {
+                    "osm_type": "relation",
+                    "osm_id": 396488,
+                    "display_name": "Los Padres National Forest, California, United States",
+                    "lat": "34.6761",
+                    "lon": "-119.9028",
+                    "category": "boundary",
+                    "type": "protected_area",
+                    "boundingbox": [
+                        "33.9432",
+                        "35.8027",
+                        "-121.7906",
+                        "-118.4982",
+                    ],
+                }
+            ]
+        )
+
+        response = self.client.get(
+            "/api/map/search?q=Los%20Padres%20National%20Forest",
+            headers=self.auth("viewer-token"),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data["provider"], "nominatim")
+        self.assertEqual(data["query"], "Los Padres National Forest")
+        self.assertEqual(data["usagePolicy"]["status"], "limited-free-public-service")
+        self.assertIn("1 request per second", data["usagePolicy"]["message"])
+        self.assertEqual(len(data["results"]), 1)
+
+        result = data["results"][0]
+        self.assertEqual(result["id"], "relation/396488")
+        self.assertEqual(
+            result["displayName"],
+            "Los Padres National Forest, California, United States",
+        )
+        self.assertEqual(result["lat"], 34.6761)
+        self.assertEqual(result["lng"], -119.9028)
+        self.assertEqual(result["category"], "boundary")
+        self.assertEqual(result["type"], "protected_area")
+        self.assertEqual(result["boundingBox"]["south"], 33.9432)
+        self.assertEqual(result["boundingBox"]["north"], 35.8027)
+        self.assertEqual(result["boundingBox"]["west"], -121.7906)
+        self.assertEqual(result["boundingBox"]["east"], -118.4982)
+        self.assertNotIn("MAP_API_KEY", json.dumps(data))
+
+        request = urlopen.call_args.args[0]
+        self.assertIn("q=Los+Padres+National+Forest", request.full_url)
+        self.assertIn("format=jsonv2", request.full_url)
+        self.assertEqual(
+            request.headers["User-agent"],
+            "FireDroneProject Tests",
+        )
+
+    def test_map_geofence_layer_returns_geojson_features(self):
+        response = self.client.get(
+            "/api/map/geofence",
+            headers=self.auth("viewer-token"),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data["type"], "FeatureCollection")
+        self.assertEqual(data["source"], "backend-gis")
+        self.assertGreaterEqual(len(data["features"]), 2)
+
+        layer_types = {
+            feature["properties"]["layerType"] for feature in data["features"]
+        }
+        self.assertIn("incident_perimeter", layer_types)
+        self.assertIn("mission_geofence", layer_types)
+
+        geofence = next(
+            feature
+            for feature in data["features"]
+            if feature["properties"]["layerType"] == "mission_geofence"
+        )
+        self.assertEqual(geofence["geometry"]["type"], "Polygon")
+        first_coord = geofence["geometry"]["coordinates"][0][0]
+        self.assertEqual(len(first_coord), 2)
+        self.assertLess(first_coord[0], 0)
+        self.assertGreater(first_coord[1], 0)
+
+    def test_map_mission_layer_returns_route_alerts_and_drone_markers(self):
+        response = self.client.get(
+            "/api/map/mission",
+            headers=self.auth("viewer-token"),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data["source"], "backend-mission-gis")
+        self.assertEqual(data["route"]["id"], "canyon-ridge-route")
+        self.assertGreaterEqual(len(data["route"]["points"]), 4)
+        self.assertGreaterEqual(len(data["alerts"]), 2)
+        self.assertGreaterEqual(len(data["drones"]), 1)
+        self.assertEqual(data["bounds"]["source"], "computed-from-map-layers")
+        self.assertLess(data["bounds"]["west"], data["bounds"]["east"])
+        self.assertLess(data["bounds"]["south"], data["bounds"]["north"])
+
+        first_route_point = data["route"]["points"][0]
+        self.assertIn("lat", first_route_point)
+        self.assertIn("lng", first_route_point)
+        self.assertLess(first_route_point["lng"], 0)
+        self.assertGreater(first_route_point["lat"], 0)
+        self.assertIn("altitudeM", first_route_point)
 
     def test_integration_status_lists_persistence_adapters_and_safety(self):
         response = self.client.get(
