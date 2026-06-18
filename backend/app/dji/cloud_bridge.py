@@ -152,3 +152,36 @@ class CloudMqttBridgeManager:
 
 
 cloud_bridge_manager = CloudMqttBridgeManager()
+
+
+def _bridge_min_config_ready(config, *, mode="cloud-api"):
+    if mode == "mobile-sdk":
+        return False
+    host = str(config.get("DJI_CLOUD_API_MQTT_HOST", "")).strip()
+    token = str(config.get("DJI_INGEST_TOKEN", "")).strip()
+    return bool(host and token)
+
+
+def try_start_cloud_bridge(app_config, runtime_store):
+    runtime = runtime_store.read()
+    mode = runtime.get("mode") or "cloud-api"
+    if mode == "mobile-sdk":
+        return cloud_bridge_manager.status()
+    effective = runtime_store.effective_config(app_config)
+    if not _bridge_min_config_ready(effective, mode=mode):
+        return cloud_bridge_manager.status()
+    return cloud_bridge_manager.start(effective)
+
+
+def init_auto_start_cloud_bridge(app):
+    if not app.config.get("DJI_AUTO_START_CLOUD_BRIDGE"):
+        return
+    from app.dji.runtime_config import DjiRuntimeConfigStore
+
+    store = DjiRuntimeConfigStore(
+        app.config.get(
+            "DJI_RUNTIME_CONFIG_FILE",
+            "instance/dji_runtime_config.json",
+        )
+    )
+    try_start_cloud_bridge(app.config, store)

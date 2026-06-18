@@ -82,13 +82,12 @@ print('published test OSD message')
 
 ## Start the in-app Cloud MQTT bridge
 
-1. Run Flask: `python run.py`
-2. POST connection config (or use the Flutter **Connect DJI** dialog):
+When `DJI_AUTO_START_CLOUD_BRIDGE=true` (default) and `backend/.env` includes both
+`DJI_CLOUD_API_MQTT_HOST` and `DJI_INGEST_TOKEN`, Flask starts the bridge on boot.
+Restart after changing `.env`:
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/dji/connection \
-  -H "Content-Type: application/json" \
-  -d "{\"mode\":\"cloud-api\",\"ingestToken\":\"YOUR_TOKEN\",\"cloudMqttHost\":\"127.0.0.1\",\"cloudMqttPort\":1883,\"autoStartCloudBridge\":true}"
+python run.py
 ```
 
 Check bridge status:
@@ -96,6 +95,21 @@ Check bridge status:
 ```bash
 curl http://127.0.0.1:5000/api/dji/connection
 ```
+
+You should see `"cloudBridge": {"running": true, "state": "subscribed", ...}` when EMQX is up.
+
+### Optional: save config via API or Flutter UI
+
+The **Connect DJI** dialog (or a POST) still saves operator settings to
+`backend/instance/dji_runtime_config.json` and can restart the bridge:
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/dji/connection \
+  -H "Content-Type: application/json" \
+  -d "{\"mode\":\"cloud-api\",\"ingestToken\":\"YOUR_TOKEN\",\"cloudMqttHost\":\"127.0.0.1\",\"cloudMqttPort\":1883,\"autoStartCloudBridge\":true}"
+```
+
+Set `DJI_AUTO_START_CLOUD_BRIDGE=false` to disable startup auto-connect.
 
 ## Alternative: standalone worker script
 

@@ -39,6 +39,7 @@ DJI_CLOUD_MQTT_USE_TLS=true
 DJI_CLOUD_MQTT_USERNAME=
 DJI_CLOUD_MQTT_PASSWORD=
 DJI_CLOUD_MQTT_CLIENT_ID=firedrone-cloud-worker
+DJI_AUTO_START_CLOUD_BRIDGE=true
 FIRE_DRONE_API_BASE=http://127.0.0.1:5000/api
 ```
 
@@ -87,6 +88,8 @@ When Cloud API mode is saved with a valid MQTT host and ingest token, the backen
 thing/product/+/osd
 thing/product/+/state
 ```
+
+When `DJI_AUTO_START_CLOUD_BRIDGE=true` (default), the same listener also starts on Flask boot if `.env` (and optional runtime config overrides) already provide `DJI_CLOUD_API_MQTT_HOST` and `DJI_INGEST_TOKEN`. Set the flag to `false` to require an explicit save or POST first.
 
 For production deployment, run the Flask backend behind HTTPS before accepting real operator secrets in a browser form.
 
