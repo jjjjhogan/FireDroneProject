@@ -4,7 +4,7 @@ from flask import current_app, request
 
 from app.dji import create_dji_connector
 from app.dji.cloud_api import cloud_api_message_to_ingest_payload
-from app.dji.cloud_bridge import cloud_bridge_manager
+from app.dji.cloud_bridge import cloud_bridge_manager, try_start_cloud_bridge
 from app.dji.ingest import normalize_ingest_payload
 from app.dji.mobile_sdk import mobile_sdk_state_to_ingest_payload
 from app.dji.runtime_config import DjiRuntimeConfigStore
@@ -158,8 +158,9 @@ def dji_save_connection():
     bridge_status = cloud_bridge_manager.status()
     auto_start = bool(payload.get("autoStartCloudBridge", True))
     if auto_start and config["mode"] == "cloud-api" and config["configured"]:
-        bridge_status = cloud_bridge_manager.start(
-            _runtime_config_store().effective_config(current_app.config)
+        bridge_status = try_start_cloud_bridge(
+            current_app.config,
+            _runtime_config_store(),
         )
     return {
         "accepted": True,

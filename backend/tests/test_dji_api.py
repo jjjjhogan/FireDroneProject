@@ -97,6 +97,7 @@ class DjiRealDataModeTest(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
+        self.state_file = Path(self.temp_dir.name) / "dji-state.json"
         self.runtime_config_file = Path(self.temp_dir.name) / "dji-runtime-config.json"
         config = type(
             "RealDataModeConfig",
@@ -106,7 +107,9 @@ class DjiRealDataModeTest(unittest.TestCase):
                 "SECRET_KEY": "test",
                 "DRONE_CONNECTOR": "real",
                 "ALLOW_DJI_COMMANDS": False,
+                "DJI_STATE_FILE": str(self.state_file),
                 "DJI_RUNTIME_CONFIG_FILE": str(self.runtime_config_file),
+                "DJI_AUTO_START_CLOUD_BRIDGE": False,
             },
         )
         self.app = create_app(config)
@@ -165,6 +168,7 @@ class DjiRealIngestTest(unittest.TestCase):
                 "DJI_STATE_FILE": str(self.state_file),
                 "DJI_RUNTIME_CONFIG_FILE": str(self.runtime_config_file),
                 "DJI_TELEMETRY_TTL_SECONDS": 300,
+                "DJI_AUTO_START_CLOUD_BRIDGE": False,
             },
         )
         self.app = create_app(config)
@@ -519,6 +523,7 @@ class DjiRuntimeConnectionConfigTest(unittest.TestCase):
                 "DJI_RUNTIME_CONFIG_FILE": str(self.config_file),
                 "DJI_TELEMETRY_TTL_SECONDS": 300,
                 "DJI_MAX_INGEST_DRONES": 16,
+                "DJI_AUTO_START_CLOUD_BRIDGE": False,
             },
         )
         self.app = create_app(config)
@@ -605,6 +610,83 @@ class DjiRuntimeConnectionConfigTest(unittest.TestCase):
         self.assertTrue(config["configured"])
         self.assertIn("/api/dji/ingest/mobile-sdk", config["mobileBridgeEndpoint"])
         self.assertNotIn("mobile-secret", json.dumps(config))
+
+
+class DjiCloudBridgeAutoStartTest(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.runtime_config_file = Path(self.temp_dir.name) / "dji-runtime-config.json"
+        self._start_patch = None
+
+    def tearDown(self):
+        if self._start_patch is not None:
+            self._start_patch.stop()
+
+    def _make_app(self, **overrides):
+        config_values = {
+            "TESTING": True,
+            "SECRET_KEY": "test",
+            "DRONE_CONNECTOR": "real",
+            "ALLOW_DJI_COMMANDS": False,
+            "DJI_RUNTIME_CONFIG_FILE": str(self.runtime_config_file),
+            "DJI_CLOUD_API_MQTT_HOST": "127.0.0.1",
+            "DJI_INGEST_TOKEN": "env-bridge-token",
+            "DJI_CLOUD_MQTT_PORT": 1883,
+            "DJI_CLOUD_MQTT_USE_TLS": False,
+            **overrides,
+        }
+        config = type("CloudBridgeAutoStartConfig", (), config_values)
+        return create_app(config)
+
+    def test_auto_start_invokes_bridge_when_env_is_configured(self):
+        from unittest.mock import patch
+
+        self._start_patch = patch(
+            "app.dji.cloud_bridge.cloud_bridge_manager.start",
+            return_value={"running": True, "state": "starting"},
+        )
+        mock_start = self._start_patch.start()
+
+        app = self._make_app(DJI_AUTO_START_CLOUD_BRIDGE=True)
+        mock_start.assert_called_once()
+        effective = mock_start.call_args[0][0]
+        self.assertEqual(effective["DJI_CLOUD_API_MQTT_HOST"], "127.0.0.1")
+        self.assertEqual(effective["DJI_INGEST_TOKEN"], "env-bridge-token")
+
+        client = app.test_client()
+        connection = client.get("/api/dji/connection").get_json()
+        self.assertIn("cloudBridge", connection)
+
+    def test_auto_start_skipped_when_flag_disabled(self):
+        from unittest.mock import patch
+
+        self._start_patch = patch(
+            "app.dji.cloud_bridge.cloud_bridge_manager.start",
+            return_value={"running": False, "state": "stopped"},
+        )
+        mock_start = self._start_patch.start()
+
+        self._make_app(DJI_AUTO_START_CLOUD_BRIDGE=False)
+
+        mock_start.assert_not_called()
+
+    def test_auto_start_skipped_for_mobile_sdk_mode(self):
+        from unittest.mock import patch
+
+        self.runtime_config_file.write_text(
+            json.dumps({"mode": "mobile-sdk", "DJI_INGEST_TOKEN": "mobile-token"}),
+            encoding="utf-8",
+        )
+        self._start_patch = patch(
+            "app.dji.cloud_bridge.cloud_bridge_manager.start",
+            return_value={"running": False, "state": "stopped"},
+        )
+        mock_start = self._start_patch.start()
+
+        self._make_app(DJI_AUTO_START_CLOUD_BRIDGE=True)
+
+        mock_start.assert_not_called()
 
 
 if __name__ == "__main__":

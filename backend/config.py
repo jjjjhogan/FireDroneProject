@@ -50,6 +50,9 @@ class Config:
         "DJI_CLOUD_MQTT_CLIENT_ID",
         "firedrone-cloud-worker",
     )
+    DJI_AUTO_START_CLOUD_BRIDGE = (
+        _env("DJI_AUTO_START_CLOUD_BRIDGE", "true").lower() == "true"
+    )
     APP_DATABASE_FILE = _env_path(
         "APP_DATABASE_FILE",
         BASE_DIR / "instance" / "operations.sqlite3",
