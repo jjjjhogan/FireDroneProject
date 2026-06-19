@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/account_api_client.dart';
+import '../account/account_dialogs.dart';
 import '../common/status_pill.dart';
 
 class TopBar extends StatelessWidget {
@@ -7,12 +9,20 @@ class TopBar extends StatelessWidget {
     required this.compact,
     required this.title,
     required this.onMenuTap,
+    required this.accountSession,
+    required this.onSignIn,
+    required this.onAccountData,
+    required this.onSignOut,
     super.key,
   });
 
   final bool compact;
   final String title;
   final VoidCallback onMenuTap;
+  final AccountSession? accountSession;
+  final VoidCallback onSignIn;
+  final VoidCallback onAccountData;
+  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -53,10 +63,27 @@ class TopBar extends StatelessWidget {
           if (!compact) ...[
             const StatusPill(label: 'DJI Link', color: Color(0xff12805c)),
             const SizedBox(width: 8),
+            AccountAccessPanel(
+              session: accountSession,
+              onSignIn: onSignIn,
+              onAccountData: onAccountData,
+              onSignOut: onSignOut,
+            ),
+            const SizedBox(width: 8),
             IconButton(
               tooltip: 'Notifications',
               onPressed: () {},
               icon: const Icon(Icons.notifications_none),
+            ),
+          ] else ...[
+            IconButton(
+              tooltip: accountSession == null ? 'Sign in' : 'Account Data',
+              onPressed: accountSession == null ? onSignIn : onAccountData,
+              icon: Icon(
+                accountSession == null
+                    ? Icons.account_circle_outlined
+                    : Icons.verified_user_outlined,
+              ),
             ),
           ],
         ],
