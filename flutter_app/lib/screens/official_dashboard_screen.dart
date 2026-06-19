@@ -23,12 +23,18 @@ class OfficialDashboardScreen extends StatefulWidget {
     required this.scenario,
     required this.operationsClient,
     required this.onConnectDji,
+    this.liveDroneTelemetry = const [],
+    this.liveTelemetryActive = false,
+    this.activeMissionRecord,
     super.key,
   });
 
   final Scenario scenario;
   final OperationsApiClient operationsClient;
   final VoidCallback onConnectDji;
+  final List<DroneTelemetry> liveDroneTelemetry;
+  final bool liveTelemetryActive;
+  final MissionRecord? activeMissionRecord;
 
   @override
   State<OfficialDashboardScreen> createState() =>
@@ -67,7 +73,11 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
   @override
   void didUpdateWidget(covariant OfficialDashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.scenario.scenarioId != widget.scenario.scenarioId) {
+    if (oldWidget.scenario.scenarioId != widget.scenario.scenarioId ||
+        oldWidget.activeMissionRecord?.missionId !=
+            widget.activeMissionRecord?.missionId ||
+        oldWidget.activeMissionRecord?.status !=
+            widget.activeMissionRecord?.status) {
       _selectedAlertIndex = 0;
       _reviewMessage = null;
       _commandMessage = null;
@@ -89,6 +99,8 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
         ? await _fireDetectionService.fetchDetections()
         : backendEvents;
     final mission = await _missionService.fetchActiveMission();
+    final resolvedMission =
+        widget.activeMissionRecord?.toDashboardMission() ?? mission;
     final backendAuditEntries = await widget.operationsClient
         .fetchAuditEntries();
     final auditEntries = backendAuditEntries.isEmpty
@@ -105,7 +117,7 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
     setState(() {
       _telemetry = telemetry;
       _events = events;
-      _mission = mission;
+      _mission = resolvedMission;
       _auditEntries = auditEntries;
       _integrationStatus = integrationStatus;
       _safetyChecklist = safetyChecklist;
@@ -120,6 +132,16 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
         : _selectedAlertIndex;
     return _events[index];
   }
+
+  List<DroneTelemetry> get _displayTelemetry {
+    if (widget.liveTelemetryActive && widget.liveDroneTelemetry.isNotEmpty) {
+      return widget.liveDroneTelemetry;
+    }
+    return _telemetry;
+  }
+
+  bool get _usingLiveDjiFeed =>
+      widget.liveTelemetryActive && widget.liveDroneTelemetry.isNotEmpty;
 
   Future<void> _selectAlert(int index) async {
     final event = _events[index];
@@ -256,7 +278,9 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
     final unconfirmed = _events
         .where((event) => event.status == AlertStatus.unconfirmed)
         .length;
-    final latestTelemetry = _telemetry.isEmpty ? null : _telemetry.first;
+    final latestTelemetry = _displayTelemetry.isEmpty
+        ? null
+        : _displayTelemetry.first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,8 +304,10 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
             MetricCard(
               icon: Icons.flight_outlined,
               label: 'Active Drones',
-              value: '${_telemetry.length}',
-              detail: 'Mock telemetry normalized behind service models',
+              value: '${_displayTelemetry.length}',
+              detail: _usingLiveDjiFeed
+                  ? 'Live DJI bridge/cloud aircraft telemetry'
+                  : 'Mock telemetry normalized behind service models',
               accent: const Color(0xff0e7656),
             ),
             MetricCard(
@@ -323,12 +349,14 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
               detail: safetyStatus.statusMessage,
               accent: const Color(0xffa63d40),
             ),
-            const MetricCard(
+            MetricCard(
               icon: Icons.dataset_outlined,
               label: 'Data Source',
-              value: 'Mock simulation',
-              detail: 'No real DJI aircraft command is sent from this panel',
-              accent: Color(0xff6c757d),
+              value: _usingLiveDjiFeed ? 'DJI bridge live' : 'Mock simulation',
+              detail: _usingLiveDjiFeed
+                  ? 'Fleet positions sourced from Cloud API or Mobile SDK ingest'
+                  : 'No real DJI aircraft command is sent from this panel',
+              accent: const Color(0xff6c757d),
             ),
             MetricCard(
               icon: Icons.storage_outlined,
@@ -357,12 +385,15 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
             scenario: widget.scenario,
             safetyStatus: safetyStatus,
           ),
-          right: _TelemetryPanel(telemetry: _telemetry),
+          right: _TelemetryPanel(
+            telemetry: _displayTelemetry,
+            liveFeed: _usingLiveDjiFeed,
+          ),
         ),
         const SizedBox(height: 12),
         _ResponsivePair(
           left: _OperationsMapPanel(
-            telemetry: _telemetry,
+            telemetry: _displayTelemetry,
             events: _events,
             scenario: widget.scenario,
           ),
@@ -666,22 +697,28 @@ class _MissionOverviewPanel extends StatelessWidget {
 }
 
 class _TelemetryPanel extends StatelessWidget {
-  const _TelemetryPanel({required this.telemetry});
+  const _TelemetryPanel({required this.telemetry, this.liveFeed = false});
 
   final List<DroneTelemetry> telemetry;
+  final bool liveFeed;
 
   @override
   Widget build(BuildContext context) {
     return _Panel(
-      title: 'DRONE TELEMETRY',
-      child: Column(
-        children: [
-          for (final item in telemetry) ...[
-            _DroneTelemetryRow(item: item),
-            if (item != telemetry.last) const Divider(height: 18),
-          ],
-        ],
-      ),
+      title: liveFeed ? 'DJI LIVE TELEMETRY' : 'DRONE TELEMETRY',
+      child: telemetry.isEmpty
+          ? const Text(
+              'No drone telemetry loaded',
+              style: TextStyle(color: Color(0xff65736f), height: 1.35),
+            )
+          : Column(
+              children: [
+                for (final item in telemetry) ...[
+                  _DroneTelemetryRow(item: item),
+                  if (item != telemetry.last) const Divider(height: 18),
+                ],
+              ],
+            ),
     );
   }
 }

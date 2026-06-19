@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/analytics_snapshot.dart';
 import 'analytics_chart_card.dart';
+import 'chart_empty_state.dart';
 
 class FleetPieChart extends StatelessWidget {
   const FleetPieChart({required this.utilization, super.key});
@@ -11,21 +12,36 @@ class FleetPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final total = utilization.activeDrones +
+        utilization.availableDrones +
+        utilization.chargingDrones;
+
+    if (total == 0) {
+      return AnalyticsChartCard(
+        title: 'Fleet Status Mix',
+        subtitle:
+            '${utilization.sortiesToday} sorties today · ${utilization.flightHoursToday.toStringAsFixed(1)} flight hours.',
+        icon: Icons.pie_chart_outline,
+        accent: const Color(0xff0e7656),
+        chart: const ChartEmptyState(
+          message: 'No fleet status counts returned by the analytics feed.',
+          icon: Icons.flight_takeoff_outlined,
+        ),
+      );
+    }
+
     final sections = [
       _section(
         value: utilization.activeDrones.toDouble(),
         color: const Color(0xff0e7656),
-        label: 'Active',
       ),
       _section(
         value: utilization.availableDrones.toDouble(),
         color: const Color(0xff12805c),
-        label: 'Available',
       ),
       _section(
         value: utilization.chargingDrones.toDouble(),
         color: const Color(0xffffc857),
-        label: 'Charging',
       ),
     ];
 
@@ -33,6 +49,8 @@ class FleetPieChart extends StatelessWidget {
       title: 'Fleet Status Mix',
       subtitle:
           '${utilization.sortiesToday} sorties today · ${utilization.flightHoursToday.toStringAsFixed(1)} flight hours.',
+      icon: Icons.pie_chart_outline,
+      accent: const Color(0xff0e7656),
       chart: Row(
         children: [
           Expanded(
@@ -79,7 +97,6 @@ class FleetPieChart extends StatelessWidget {
   PieChartSectionData _section({
     required double value,
     required Color color,
-    required String label,
   }) {
     return PieChartSectionData(
       value: value == 0 ? 0.001 : value,

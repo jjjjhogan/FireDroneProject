@@ -1,6 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+
+import '../../models/drone_connection.dart';
+import '../../utils/map_geo.dart';
 
 class MissionCommandMap extends StatelessWidget {
   const MissionCommandMap({
@@ -8,6 +9,9 @@ class MissionCommandMap extends StatelessWidget {
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
+    this.status,
+    this.fleet = const [],
+    this.routePoints = const [],
     super.key,
   });
 
@@ -15,13 +19,15 @@ class MissionCommandMap extends StatelessWidget {
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
+  final DjiStatus? status;
+  final List<DroneSummary> fleet;
+  final List<Map<String, double>> routePoints;
 
-  static const _centerLat = 34.62;
-  static const _centerLng = -119.72;
-  static const _zoom = 11;
+  MapViewport get _viewport => MapViewport.fromFleet(fleet);
 
   @override
   Widget build(BuildContext context) {
+    final viewport = _viewport;
     return Container(
       height: 410,
       decoration: BoxDecoration(
@@ -32,7 +38,7 @@ class MissionCommandMap extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          const Positioned.fill(child: OsmTileLayer()),
+          Positioned.fill(child: OsmTileLayer(viewport: viewport)),
           Positioned.fill(
             child: Image.asset(
               'assets/images/mission-map-fallback.png',
@@ -47,11 +53,22 @@ class MissionCommandMap extends StatelessWidget {
               ),
             ),
           ),
-          const Positioned.fill(child: FireMissionOverlay()),
+          Positioned.fill(
+            child: MissionMapOverlay(
+              viewport: viewport,
+              fleet: fleet,
+              routePoints: routePoints,
+              liveData: status?.liveData ?? false,
+            ),
+          ),
           Positioned(
             left: 16,
             top: 14,
-            child: MapTitlePill(missionAvailable: missionAvailable),
+            child: MapTitlePill(
+              missionAvailable: missionAvailable,
+              status: status,
+              fleetCount: fleet.length,
+            ),
           ),
           const Positioned(left: 16, top: 72, child: MapToolRail()),
           const Positioned(right: 16, top: 16, child: MapLayerRail()),
@@ -76,30 +93,14 @@ class MissionCommandMap extends StatelessWidget {
 }
 
 class OsmTileLayer extends StatelessWidget {
-  const OsmTileLayer({super.key});
+  const OsmTileLayer({required this.viewport, super.key});
 
-  static int _tileX(double lng, int zoom) {
-    return (((lng + 180) / 360) * math.pow(2, zoom)).floor();
-  }
-
-  static int _tileY(double lat, int zoom) {
-    final latRad = lat * math.pi / 180;
-    return ((1 - math.log(math.tan(latRad) + 1 / math.cos(latRad)) / math.pi) /
-            2 *
-            math.pow(2, zoom))
-        .floor();
-  }
+  final MapViewport viewport;
 
   @override
   Widget build(BuildContext context) {
-    final centerX = _tileX(
-      MissionCommandMap._centerLng,
-      MissionCommandMap._zoom,
-    );
-    final centerY = _tileY(
-      MissionCommandMap._centerLat,
-      MissionCommandMap._zoom,
-    );
+    final centerX = mapTileX(viewport.centerLng, viewport.zoom);
+    final centerY = mapTileY(viewport.centerLat, viewport.zoom);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -115,7 +116,7 @@ class OsmTileLayer extends StatelessWidget {
                   width: tileWidth + 1,
                   height: tileHeight + 1,
                   child: Image.network(
-                    'https://tile.openstreetmap.org/${MissionCommandMap._zoom}/${centerX + col - 2}/${centerY + row - 1}.png',
+                    'https://tile.openstreetmap.org/${viewport.zoom}/${centerX + col - 2}/${centerY + row - 1}.png',
                     fit: BoxFit.cover,
                     filterQuality: FilterQuality.medium,
                     errorBuilder: (context, error, stackTrace) {
@@ -140,18 +141,62 @@ class OsmTileLayer extends StatelessWidget {
   }
 }
 
-class FireMissionOverlay extends StatelessWidget {
-  const FireMissionOverlay({super.key});
+class MissionMapOverlay extends StatelessWidget {
+  const MissionMapOverlay({
+    required this.viewport,
+    required this.fleet,
+    required this.routePoints,
+    required this.liveData,
+    super.key,
+  });
+
+  final MapViewport viewport;
+  final List<DroneSummary> fleet;
+  final List<Map<String, double>> routePoints;
+  final bool liveData;
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: FireMissionPainter());
+    return CustomPaint(
+      painter: MissionMapPainter(
+        viewport: viewport,
+        fleet: fleet,
+        routePoints: routePoints,
+        liveData: liveData,
+      ),
+    );
   }
 }
 
-class FireMissionPainter extends CustomPainter {
+class MissionMapPainter extends CustomPainter {
+  MissionMapPainter({
+    required this.viewport,
+    required this.fleet,
+    required this.routePoints,
+    required this.liveData,
+  });
+
+  final MapViewport viewport;
+  final List<DroneSummary> fleet;
+  final List<Map<String, double>> routePoints;
+  final bool liveData;
+
   @override
   void paint(Canvas canvas, Size size) {
+    _drawGrid(canvas, size);
+
+    if (liveData && fleet.any(hasMapPosition)) {
+      _drawLiveFleet(canvas, size);
+    } else {
+      _drawSimulatedMission(canvas, size);
+    }
+
+    if (routePoints.length >= 2) {
+      _drawRoute(canvas, size, routePoints);
+    }
+  }
+
+  void _drawGrid(Canvas canvas, Size size) {
     final grid = Paint()
       ..color = Colors.white.withValues(alpha: 0.10)
       ..strokeWidth = 1;
@@ -161,7 +206,36 @@ class FireMissionPainter extends CustomPainter {
     for (var y = 0.0; y < size.height; y += 58) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
+  }
 
+  void _drawLiveFleet(Canvas canvas, Size size) {
+    for (final drone in fleet.where(hasMapPosition)) {
+      final point = latLngToMapOffset(
+        lat: drone.lat,
+        lng: drone.lng,
+        width: size.width,
+        height: size.height,
+        viewport: viewport,
+      );
+      if (point.dx < -20 ||
+          point.dy < -20 ||
+          point.dx > size.width + 20 ||
+          point.dy > size.height + 20) {
+        continue;
+      }
+
+      final accent = switch (drone.connection) {
+        'online' => const Color(0xff22b7ae),
+        'standby' => const Color(0xffffc857),
+        _ => const Color(0xff94a3b8),
+      };
+      canvas.drawCircle(point, 24, Paint()..color = accent.withValues(alpha: 0.35));
+      _drawDrone(canvas, point, accent);
+      _drawDroneLabel(canvas, point, drone.name.split(' ').first);
+    }
+  }
+
+  void _drawSimulatedMission(Canvas canvas, Size size) {
     final firePath = Path()
       ..moveTo(size.width * 0.34, size.height * 0.34)
       ..cubicTo(
@@ -205,31 +279,11 @@ class FireMissionPainter extends CustomPainter {
       Offset(size.width * 0.47, size.height * 0.82),
       Offset(size.width * 0.28, size.height * 0.50),
     ];
-    final routePaint = Paint()
-      ..color = const Color(0xff22b7ae)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final routePath = Path()..moveTo(route.first.dx, route.first.dy);
-    for (final point in route.skip(1)) {
-      routePath.lineTo(point.dx, point.dy);
-    }
-    routePath.close();
-    canvas.drawPath(routePath, routePaint);
-
-    for (var i = 0; i < route.length; i++) {
-      canvas.drawCircle(route[i], 13, Paint()..color = const Color(0xff16b7a8));
-      canvas.drawCircle(
-        route[i],
-        10,
-        Paint()..color = Colors.white.withValues(alpha: 0.22),
-      );
-      _drawLabel(canvas, route[i], '${i + 1}');
-    }
+    _drawRoutePoints(canvas, route);
 
     final drone = Offset(size.width * 0.50, size.height * 0.50);
     canvas.drawCircle(drone, 24, Paint()..color = const Color(0x6622b7ae));
-    _drawDrone(canvas, drone);
+    _drawDrone(canvas, drone, Colors.white);
 
     final flames = [
       Offset(size.width * 0.43, size.height * 0.45),
@@ -248,14 +302,60 @@ class FireMissionPainter extends CustomPainter {
     }
   }
 
-  void _drawDrone(Canvas canvas, Offset center) {
+  void _drawRoute(Canvas canvas, Size size, List<Map<String, double>> points) {
+    final offsets = points
+        .map(
+          (point) => latLngToMapOffset(
+            lat: point['lat'] ?? 0,
+            lng: point['lng'] ?? 0,
+            width: size.width,
+            height: size.height,
+            viewport: viewport,
+          ),
+        )
+        .toList();
+    _drawRoutePoints(canvas, offsets);
+  }
+
+  void _drawRoutePoints(Canvas canvas, List<Offset> route) {
+    if (route.length < 2) {
+      return;
+    }
+
+    final routePaint = Paint()
+      ..color = const Color(0xff22b7ae)
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final routePath = Path()..moveTo(route.first.dx, route.first.dy);
+    for (final point in route.skip(1)) {
+      routePath.lineTo(point.dx, point.dy);
+    }
+    canvas.drawPath(routePath, routePaint);
+
+    for (var i = 0; i < route.length; i++) {
+      canvas.drawCircle(
+        route[i],
+        13,
+        Paint()..color = const Color(0xff16b7a8),
+      );
+      canvas.drawCircle(
+        route[i],
+        10,
+        Paint()..color = Colors.white.withValues(alpha: 0.22),
+      );
+      _drawDroneLabel(canvas, route[i], '${i + 1}');
+    }
+  }
+
+  void _drawDrone(Canvas canvas, Offset center, Color color) {
     final paint = Paint()
-      ..color = Colors.white
+      ..color = color
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(center.translate(-22, 0), center.translate(22, 0), paint);
     canvas.drawLine(center.translate(0, -16), center.translate(0, 16), paint);
-    canvas.drawCircle(center, 5, Paint()..color = Colors.white);
+    canvas.drawCircle(center, 5, Paint()..color = color);
     for (final point in [
       center.translate(-22, 0),
       center.translate(22, 0),
@@ -266,20 +366,20 @@ class FireMissionPainter extends CustomPainter {
         point,
         6,
         Paint()
-          ..color = Colors.white
+          ..color = color
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
     }
   }
 
-  void _drawLabel(Canvas canvas, Offset center, String text) {
+  void _drawDroneLabel(Canvas canvas, Offset center, String text) {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -287,21 +387,47 @@ class FireMissionPainter extends CustomPainter {
     )..layout();
     painter.paint(
       canvas,
-      center - Offset(painter.width / 2, painter.height / 2),
+      center +
+          Offset(-painter.width / 2, -painter.height / 2 - 28),
     );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant MissionMapPainter oldDelegate) {
+    return oldDelegate.viewport.centerLat != viewport.centerLat ||
+        oldDelegate.viewport.centerLng != viewport.centerLng ||
+        oldDelegate.liveData != liveData ||
+        oldDelegate.fleet != fleet ||
+        oldDelegate.routePoints != routePoints;
+  }
 }
 
 class MapTitlePill extends StatelessWidget {
-  const MapTitlePill({required this.missionAvailable, super.key});
+  const MapTitlePill({
+    required this.missionAvailable,
+    this.status,
+    this.fleetCount = 0,
+    super.key,
+  });
 
   final bool missionAvailable;
+  final DjiStatus? status;
+  final int fleetCount;
 
   @override
   Widget build(BuildContext context) {
+    final live = status?.liveData ?? false;
+    final subtitle = switch (status?.connection) {
+      'bridge-online' when live =>
+        '${status?.source ?? 'DJI bridge'} · $fleetCount aircraft live on map',
+      'bridge-online' => 'Bridge online, waiting for aircraft telemetry',
+      'waiting-for-bridge' => 'Ingest configured · waiting for bridge/cloud feed',
+      'bridge-stale' => 'Bridge feed stale · check Cloud API or Mobile SDK worker',
+      'configured' => 'Connector configured · start bridge ingest to go live',
+      _ when missionAvailable => 'Mission preview ready from backend package',
+      _ => 'Connect DJI Cloud API or Mobile SDK bridge for live aircraft',
+    };
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -311,9 +437,9 @@ class MapTitlePill extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'PLANNING MAP',
-            style: TextStyle(
+          Text(
+            live ? 'LIVE OPERATIONS MAP' : 'PLANNING MAP',
+            style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.4,
@@ -321,9 +447,7 @@ class MapTitlePill extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            missionAvailable
-                ? 'DJI bridge connected, mission preview ready'
-                : 'No live DJI/fire feed connected',
+            subtitle,
             style: const TextStyle(color: Color(0xffd8e7e1)),
           ),
         ],

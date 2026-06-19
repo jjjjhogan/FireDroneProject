@@ -2,7 +2,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../models/analytics_snapshot.dart';
+import '../analytics_helpers.dart';
 import 'analytics_chart_card.dart';
+import 'chart_empty_state.dart';
 
 class ResponseBarChart extends StatelessWidget {
   const ResponseBarChart({required this.points, super.key});
@@ -13,17 +15,28 @@ class ResponseBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxY = points.fold<double>(
-      0,
-      (max, point) => point.value > max ? point.value : max,
-    );
+    if (points.isEmpty) {
+      return AnalyticsChartCard(
+        title: 'Response Time Breakdown',
+        subtitle: 'Median stage durations from recent sorties.',
+        icon: Icons.schedule_outlined,
+        accent: _barColor,
+        chart: const ChartEmptyState(
+          message: 'No response timing series returned by the analytics feed.',
+        ),
+      );
+    }
+
+    final maxY = chartMaxY(points.map((point) => point.value));
 
     return AnalyticsChartCard(
       title: 'Response Time Breakdown',
       subtitle: 'Median stage durations from recent sorties.',
+      icon: Icons.schedule_outlined,
+      accent: _barColor,
       chart: BarChart(
         BarChartData(
-          maxY: maxY + 2,
+          maxY: maxY,
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,

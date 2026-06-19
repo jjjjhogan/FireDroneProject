@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/analytics_snapshot.dart';
 import '../widgets/analytics/analytics_integration_panel.dart';
+import '../widgets/analytics/analytics_section_header.dart';
 import '../widgets/analytics/charts/fleet_pie_chart.dart';
 import '../widgets/analytics/charts/hotspot_line_chart.dart';
 import '../widgets/analytics/charts/performance_charts.dart';
@@ -19,26 +20,35 @@ class AnalyticsGraphsPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InfoCard(
-          color: const Color(0xfff8fbfa),
+          color: const Color(0xff0f241f),
+          borderColor: const Color(0xff29423d),
           child: Row(
             children: [
-              const Icon(Icons.show_chart, color: Color(0xff0e7656)),
-              const SizedBox(width: 12),
-              Expanded(
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.show_chart, color: Color(0xffb7f1d8)),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
                       'Graph Analytics',
                       style: TextStyle(
+                        color: Colors.white,
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
                       ),
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Chart series are sourced from the analytics feed and can be swapped to GET /api/analytics/graphs when live data is available.',
-                      style: TextStyle(color: Color(0xff62716c), height: 1.35),
+                      'Interactive chart series from GET /api/analytics/summary. Overview tab keeps tabular KPIs and mission history.',
+                      style: TextStyle(color: Color(0xffd7e7e1), height: 1.35),
                     ),
                   ],
                 ),
@@ -46,7 +56,12 @@ class AnalyticsGraphsPage extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
+        const AnalyticsSectionHeader(
+          icon: Icons.insights_outlined,
+          title: 'Detection & Response',
+          subtitle: 'Weekly hotspot volume and stage-by-stage response timing.',
+        ),
         LayoutBuilder(
           builder: (context, constraints) {
             final stacked = constraints.maxWidth < 980;
@@ -77,21 +92,23 @@ class AnalyticsGraphsPage extends StatelessWidget {
             );
           },
         ),
-        const SizedBox(height: 18),
-        ThermalConfidenceChart(
+        const SizedBox(height: 22),
+        const AnalyticsSectionHeader(
+          icon: Icons.multiline_chart_outlined,
+          title: 'Model Performance',
+          subtitle:
+              'Thermal confidence and patrol coverage tracked on separate time scales.',
+        ),
+        ModelPerformanceCharts(
           confidenceTrend: analytics.thermalConfidenceTrend,
           coverageTrend: analytics.patrolCoverageTrend,
         ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 16,
-          runSpacing: 8,
-          children: const [
-            _ChartLegend(color: Color(0xff0e7656), label: 'Thermal confidence'),
-            _ChartLegend(color: Color(0xffffc857), label: 'Patrol coverage'),
-          ],
+        const SizedBox(height: 22),
+        const AnalyticsSectionHeader(
+          icon: Icons.pie_chart_outline,
+          title: 'Fleet & Missions',
+          subtitle: 'Current fleet mix and hotspot yield from recent sorties.',
         ),
-        const SizedBox(height: 18),
         LayoutBuilder(
           builder: (context, constraints) {
             final stacked = constraints.maxWidth < 980;
@@ -132,29 +149,6 @@ class AnalyticsGraphsPage extends StatelessWidget {
               )
               .toList(),
         ),
-      ],
-    );
-  }
-}
-
-class _ChartLegend extends StatelessWidget {
-  const _ChartLegend({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       ],
     );
   }

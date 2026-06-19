@@ -263,6 +263,48 @@ class OpsIntegrationTest(unittest.TestCase):
         self.assertEqual(reloaded["geofence"]["status"], "verified")
         self.assertIn("GIS", reloaded["geofence"]["notes"])
 
+    def test_mission_system_plan_preview_and_transition(self):
+        plan = self.client.post(
+            "/api/missions/plan",
+            headers=self.auth("operator-token"),
+            json={
+                "scenarioId": "canyon-ridge",
+                "scenarioName": "Canyon Ridge Fire",
+                "area": "Mountain",
+                "routePoints": [
+                    {"lat": 37.21, "lng": -119.54},
+                    {"lat": 37.22, "lng": -119.53},
+                ],
+            },
+        )
+        self.assertEqual(plan.status_code, 200)
+        mission = plan.get_json()["mission"]
+        self.assertEqual(mission["status"], "planning")
+
+        preview = self.client.post(
+            "/api/dji/missions/preview",
+            json={
+                "scenarioId": "canyon-ridge",
+                "routePoints": mission["routePoints"],
+            },
+        )
+        self.assertEqual(preview.status_code, 409)
+
+        active = self.client.get(
+            "/api/missions/active",
+            headers=self.auth("viewer-token"),
+        ).get_json()["mission"]
+        self.assertEqual(active["missionId"], mission["missionId"])
+
+        paused = self.client.post(
+            f"/api/missions/{mission['missionId']}/transition",
+            headers=self.auth("operator-token"),
+            json={"status": "paused", "progressPct": 42},
+        )
+        self.assertEqual(paused.status_code, 200)
+        self.assertEqual(paused.get_json()["mission"]["status"], "paused")
+        self.assertEqual(paused.get_json()["mission"]["progressPct"], 42)
+
 
 if __name__ == "__main__":
     unittest.main()

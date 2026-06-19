@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../models/analytics_snapshot.dart';
 import '../widgets/analytics/analytics_integration_panel.dart';
+import '../widgets/analytics/analytics_kpi_card.dart';
 import '../widgets/analytics/analytics_mission_list.dart';
+import '../widgets/analytics/analytics_section_header.dart';
 import '../widgets/analytics/analytics_trend_bars.dart';
 import '../widgets/common/info_card.dart';
 import '../widgets/common/metric_card.dart';
@@ -18,21 +20,22 @@ class AnalyticsOverviewTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const AnalyticsSectionHeader(
+          icon: Icons.speed_outlined,
+          title: 'Performance KPIs',
+          subtitle: 'Mission-level indicators sourced from the analytics summary feed.',
+        ),
         ResponsiveGrid(
           children: analytics.kpis
-              .map(
-                (kpi) => MetricCard(
-                  icon: _iconForKpi(kpi.id),
-                  label: kpi.label,
-                  value: kpi.value,
-                  detail: kpi.trend == null
-                      ? kpi.detail
-                      : '${kpi.detail}\n${kpi.trend!}',
-                ),
-              )
+              .map((kpi) => AnalyticsKpiCard(kpi: kpi))
               .toList(),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
+        const AnalyticsSectionHeader(
+          icon: Icons.timeline_outlined,
+          title: 'Operational Trends',
+          subtitle: 'Rolling patrol and response metrics from recent sorties.',
+        ),
         LayoutBuilder(
           builder: (context, constraints) {
             final stacked = constraints.maxWidth < 980;
@@ -40,11 +43,15 @@ class AnalyticsOverviewTab extends StatelessWidget {
               title: 'Weekly Hotspot Detections',
               subtitle: 'Rolling seven-day thermal cue volume.',
               points: analytics.weeklyDetections,
+              accent: const Color(0xff0e7656),
+              icon: Icons.local_fire_department_outlined,
             );
             final responseSection = AnalyticsTrendBars(
               title: 'Response Time Breakdown',
               subtitle: 'Median stage durations from the latest sorties.',
               points: analytics.responseTimesMin,
+              accent: const Color(0xff2364aa),
+              icon: Icons.schedule_outlined,
             );
 
             if (stacked) {
@@ -67,7 +74,12 @@ class AnalyticsOverviewTab extends StatelessWidget {
             );
           },
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
+        const AnalyticsSectionHeader(
+          icon: Icons.flight_takeoff_outlined,
+          title: 'Fleet & Environment',
+          subtitle: 'Sortie capacity and conditions that influence thermal detection quality.',
+        ),
         LayoutBuilder(
           builder: (context, constraints) {
             final stacked = constraints.maxWidth < 980;
@@ -98,23 +110,13 @@ class AnalyticsOverviewTab extends StatelessWidget {
             );
           },
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
         AnalyticsMissionList(missions: analytics.recentMissions),
         const SizedBox(height: 18),
         AnalyticsIntegrationPanel(targets: analytics.integrationTargets),
       ],
     );
   }
-
-  IconData _iconForKpi(String id) => switch (id) {
-    'detection_latency' => Icons.timer_outlined,
-    'thermal_confidence' => Icons.local_fire_department_outlined,
-    'safe_return' => Icons.battery_charging_full_outlined,
-    'coverage_efficiency' => Icons.map_outlined,
-    'false_positive_rate' => Icons.rule_outlined,
-    'command_gate' => Icons.lock_outline,
-    _ => Icons.insights_outlined,
-  };
 }
 
 class _FleetUtilizationPanel extends StatelessWidget {
@@ -125,6 +127,7 @@ class _FleetUtilizationPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InfoCard(
+      color: const Color(0xfff8fbfa),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -175,6 +178,7 @@ class _EnvironmentalPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InfoCard(
+      color: const Color(0xfff8fbfa),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -195,12 +199,14 @@ class _EnvironmentalPanel extends StatelessWidget {
                 label: 'Wind',
                 value: '${environmental.windMph.round()} mph',
                 detail: 'Crosswind impact on hover stability',
+                accent: const Color(0xff2364aa),
               ),
               MetricCard(
                 icon: Icons.water_drop_outlined,
                 label: 'Humidity',
                 value: '${environmental.humidityPct}%',
                 detail: 'Lower humidity raises false-positive risk',
+                accent: const Color(0xff12805c),
               ),
               MetricCard(
                 icon: Icons.visibility_outlined,
@@ -208,6 +214,7 @@ class _EnvironmentalPanel extends StatelessWidget {
                 value: '${environmental.visibilityMi.toStringAsFixed(1)} mi',
                 detail:
                     'Smoke index ${environmental.smokeIndex} · thermal noise ${environmental.thermalNoise}',
+                accent: const Color(0xff725ac1),
               ),
             ],
           ),

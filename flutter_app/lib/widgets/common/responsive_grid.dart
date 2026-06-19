@@ -7,15 +7,16 @@ class ResponsiveGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final columns = width >= 1180
-        ? 3
-        : width >= 760
-        ? 2
-        : 1;
-
     return LayoutBuilder(
       builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final columns = width >= 1180
+            ? 3
+            : width >= 760
+            ? 2
+            : 1;
         final gap = columns == 1 ? 12.0 : 16.0;
         final itemWidth =
             (constraints.maxWidth - gap * (columns - 1)) / columns;

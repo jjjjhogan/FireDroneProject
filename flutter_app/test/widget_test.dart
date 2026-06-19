@@ -42,7 +42,7 @@ void main() {
     expect(find.text('Placeholder'), findsNothing);
     expect(find.text('AUDIT LOG'), findsOneWidget);
     expect(find.text('Emergency Stop'), findsOneWidget);
-    expect(find.text('Canyon Ridge Fire'), findsWidgets);
+    expect(find.text('San Bernardino Mountain Ridge'), findsWidgets);
     expect(find.text('PLANNING MAP'), findsOneWidget);
     expect(find.text('CONNECTED DRONES'), findsOneWidget);
     expect(find.text('DJI connector not configured'), findsWidgets);
@@ -59,9 +59,9 @@ void main() {
     expect(find.text('Scenario Library'), findsOneWidget);
     expect(find.text('About & Safety'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Confirm'));
+    await tester.ensureVisible(find.text('Confirm').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirm'));
+    await tester.tap(find.text('Confirm').first);
     await tester.pumpAndSettle();
     expect(find.text('Alert confirmed'), findsOneWidget);
     expect(find.textContaining('Confirmed alert'), findsWidgets);
@@ -123,8 +123,25 @@ void main() {
     await tester.tap(find.text('Live Simulator'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Canyon Ridge Fire'), findsWidgets);
+    expect(find.text('MISSION SYSTEM'), findsOneWidget);
+    expect(find.text('San Bernardino Mountain Ridge'), findsWidgets);
     expect(find.text('START MISSION'), findsWidgets);
+
+    await tester.tap(find.text('Analytics'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MISSION ANALYTICS'), findsOneWidget);
+    expect(find.text('Performance KPIs'), findsOneWidget);
+    expect(find.text('Detection Latency'), findsWidgets);
+    expect(find.text('Mock feed'), findsOneWidget);
+    expect(find.textContaining('Jun 10, 2026'), findsOneWidget);
+
+    await tester.tap(find.text('Graphs'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Graph Analytics'), findsOneWidget);
+    expect(find.text('Thermal Confidence'), findsOneWidget);
+    expect(find.text('Patrol Coverage'), findsOneWidget);
 
     await tester.tap(find.text('About & Safety'));
     await tester.pumpAndSettle();
@@ -153,7 +170,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('AeroScout Command'), findsWidgets);
-    expect(find.text('Canyon Ridge Fire'), findsWidgets);
+    expect(find.text('San Bernardino Mountain Ridge'), findsWidgets);
     expect(find.text('CONNECTED DRONES'), findsWidgets);
     expect(find.text('DJI connector not configured'), findsWidgets);
     expect(find.text('No real DJI aircraft connected'), findsWidgets);

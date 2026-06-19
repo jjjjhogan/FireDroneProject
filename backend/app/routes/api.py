@@ -204,15 +204,92 @@ def dji_mission_preview():
     payload = request.get_json(silent=True) or {}
     result = _dji_connector().preview_mission(payload)
     if isinstance(result, tuple):
-        return result
-    return result
+        preview, status_code = result
+    else:
+        preview, status_code = result, 200
+
+    active = _operations_store().get_active_mission()
+    if active:
+        try:
+            _operations_store().apply_preview(active["missionId"], preview)
+        except ValueError:
+            pass
+    return preview, status_code
 
 
 @api_bp.route("/dji/missions/confirm", methods=["POST"])
 def dji_mission_confirm():
     payload = request.get_json(silent=True) or {}
     response, status_code = _dji_connector().confirm_mission(payload)
+    active = _operations_store().get_active_mission()
+    if active:
+        try:
+            updated = _operations_store().confirm_mission_record(
+                active["missionId"],
+                response,
+            )
+            if response.get("accepted"):
+                response = {**response, "missionId": updated["missionId"]}
+        except ValueError:
+            pass
     return response, status_code
+
+
+@api_bp.route("/missions/active", methods=["GET"])
+@require_roles("viewer")
+def missions_active(identity):
+    mission = _operations_store().get_active_mission()
+    return {"mission": mission}
+
+
+@api_bp.route("/missions", methods=["GET"])
+@require_roles("viewer")
+def missions_list(identity):
+    limit = request.args.get("limit", 20)
+    return {"missions": _operations_store().list_missions(limit=limit)}
+
+
+@api_bp.route("/missions/plan", methods=["POST"])
+@require_roles("operator")
+def missions_plan(identity):
+    payload = request.get_json(silent=True) or {}
+    mission = _operations_store().plan_mission(payload)
+    _operations_store().record_audit(
+        actor=identity["actor"],
+        role=identity["role"],
+        action="Planned mission",
+        target_id=mission["missionId"],
+        details=f"{mission['scenarioName']} · {mission['status']}",
+    )
+    return {"mission": mission}
+
+
+@api_bp.route("/missions/<mission_id>/transition", methods=["POST"])
+@require_roles("operator")
+def missions_transition(identity, mission_id):
+    payload = request.get_json(silent=True) or {}
+    status = str(payload.get("status", "")).strip()
+    notes = payload.get("notes")
+    progress_pct = payload.get("progressPct")
+    store = _operations_store()
+    try:
+        mission = store.transition_mission(
+            mission_id,
+            status,
+            notes=notes,
+            progress_pct=progress_pct,
+        )
+    except ValueError as error:
+        return {"accepted": False, "error": str(error)}, 400
+
+    store.record_audit(
+        actor=identity["actor"],
+        role=identity["role"],
+        action=f"Mission {status}",
+        target_id=mission_id,
+        details=mission["notes"],
+    )
+    return {"accepted": True, "mission": mission}
 
 
 @api_bp.route("/auth/session", methods=["GET"])

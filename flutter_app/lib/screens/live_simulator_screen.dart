@@ -4,11 +4,16 @@ import '../data/mock_scenarios.dart';
 import '../models/drone_connection.dart';
 import '../models/scenario.dart';
 import '../models/simulation_layout.dart';
+import '../services/dji_fleet_telemetry_adapter.dart';
+import '../services/dji_live_feed.dart';
 import '../services/drone_api_client.dart';
 import '../services/operations_api_client.dart';
 import '../widgets/common/info_card.dart';
 import '../widgets/simulator/dji_connection_dialog.dart';
+import '../models/mission.dart';
+import '../services/mission_system_service.dart';
 import '../widgets/simulator/mission_command_map.dart';
+import '../widgets/simulator/mission_system_panel.dart';
 import 'official_dashboard_screen.dart';
 
 class LiveSimulatorScreen extends StatefulWidget {
@@ -31,18 +36,18 @@ class LiveSimulatorScreen extends StatefulWidget {
 
 class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
   late SimulationLayout _layout;
-  late Future<DjiStatus> _statusFuture;
-  late Future<List<DroneSummary>> _fleetFuture;
-  late Future<TelemetrySnapshot> _telemetryFuture;
-  late Future<MissionPreview> _previewFuture;
+  late DjiLiveFeed _liveFeed;
+  final MissionSystemService _missionSystem = ResilientMissionSystemService();
+  MissionRecord? _missionRecord;
   MissionConfirmResult? _confirmResult;
   bool _confirming = false;
 
   @override
   void initState() {
     super.initState();
+    _liveFeed = DjiLiveFeed(widget.droneClient)..addListener(_onLiveFeedUpdated);
     _loadLayoutForScenario(widget.scenario);
-    _loadDjiData();
+    _bootstrapMissionSystem();
   }
 
   @override
@@ -50,24 +55,51 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.scenario != widget.scenario) {
       _loadLayoutForScenario(widget.scenario);
-      _loadDjiData();
+      _bootstrapMissionSystem(resetMission: true);
     }
+  }
+
+  Future<void> _bootstrapMissionSystem({bool resetMission = false}) async {
+    if (resetMission) {
+      _confirmResult = null;
+    }
+    await _refreshLiveFeed();
+    final assignedDrone = _liveFeed.fleet.isNotEmpty
+        ? _liveFeed.fleet.first.id
+        : null;
+    final record = await _missionSystem.planMission(
+      scenario: widget.scenario,
+      layout: _layout,
+      assignedDroneId: assignedDrone,
+      dataSource: missionDataSourceForStatus(_liveFeed.status),
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _missionRecord = record);
   }
 
   @override
   void dispose() {
+    _liveFeed.removeListener(_onLiveFeedUpdated);
+    _liveFeed.dispose();
     super.dispose();
   }
 
-  void _loadDjiData() {
-    _statusFuture = widget.droneClient.fetchStatus();
-    _fleetFuture = widget.droneClient.fetchFleet();
-    _telemetryFuture = widget.droneClient.fetchTelemetry();
-    _previewFuture = widget.droneClient.previewMission(
+  void _onLiveFeedUpdated() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _refreshLiveFeed({bool resetMission = false}) async {
+    if (resetMission) {
+      _confirmResult = null;
+    }
+    await _liveFeed.refreshAll(
       scenario: widget.scenario,
       layout: _layout,
     );
-    _confirmResult = null;
   }
 
   void _loadLayoutForScenario(Scenario scenario) {
@@ -75,13 +107,45 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
   }
 
   void _pauseRun() {
-    setState(() {});
+    _transitionMission('paused', notes: 'Mission paused by operator.');
   }
 
   void _resetRun() {
-    setState(() {
-      _confirmResult = null;
-    });
+    _transitionMission('aborted', notes: 'Mission aborted from command map.');
+    setState(() => _confirmResult = null);
+  }
+
+  Future<void> _transitionMission(
+    String status, {
+    String? notes,
+    int? progressPct,
+  }) async {
+    final mission = _missionRecord;
+    if (mission == null) {
+      return;
+    }
+    final updated = await _missionSystem.transitionMission(
+      missionId: mission.missionId,
+      status: status,
+      notes: notes,
+      progressPct: progressPct,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _missionRecord = updated);
+  }
+
+  Future<void> _resumeMission() {
+    return _transitionMission('active', notes: 'Mission resumed by operator.');
+  }
+
+  Future<void> _completeMission() {
+    return _transitionMission(
+      'completed',
+      notes: 'Mission marked complete by operator.',
+      progressPct: 100,
+    );
   }
 
   Future<void> _openDjiConnectionSetup() async {
@@ -89,16 +153,18 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
       context: context,
       builder: (context) => DjiConnectionDialog(
         droneClient: widget.droneClient,
-        onSaved: () {
-          setState(_loadDjiData);
-        },
+        onSaved: () => _bootstrapMissionSystem(),
       ),
     );
   }
 
   Future<void> _confirmMissionPackage() async {
     setState(() => _confirming = true);
-    final preview = await _previewFuture;
+    final preview = _liveFeed.preview;
+    if (preview == null) {
+      setState(() => _confirming = false);
+      return;
+    }
     final result = await widget.droneClient.confirmMission(preview);
     if (!mounted) {
       return;
@@ -107,111 +173,144 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
       _confirmResult = result;
       _confirming = false;
     });
+    await _refreshLiveFeed();
+    final active = await _missionSystem.fetchActiveMission();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _missionRecord = active ?? _missionRecord);
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<dynamic>>(
-      future: Future.wait([
-        _statusFuture,
-        _fleetFuture,
-        _telemetryFuture,
-        _previewFuture,
-      ]),
-      builder: (context, snapshot) {
-        final data = snapshot.data;
-        final status = data?[0] as DjiStatus?;
-        final fleet = data?[1] as List<DroneSummary>? ?? const [];
-        final telemetry =
-            data?[2] as TelemetrySnapshot? ??
-            const TelemetrySnapshot(
-              activeDroneId: 'unknown',
-              missionState: 'not-configured',
-              routeProgressPct: 0,
-              windMph: 0,
-              temperatureF: 0,
-              firePerimeterRisk: 'unknown',
-              linkHealth: 'not-configured',
-            );
-        final preview = data?[3] as MissionPreview?;
-        final desktop = MediaQuery.sizeOf(context).width >= 1120;
+    final status = _liveFeed.status;
+    final fleet = _liveFeed.fleet;
+    final telemetry = _liveFeed.telemetry;
+    final preview = _liveFeed.preview;
+    final routePoints =
+        preview?.routePoints ??
+        _missionRecord?.routePoints.map((point) => point.toJson()).toList() ??
+        const <Map<String, double>>[];
+    final desktop = MediaQuery.sizeOf(context).width >= 1120;
+    final initialLoad =
+        _liveFeed.isRefreshing && status == null && _missionRecord == null;
 
-        Widget missionDashboard;
-        if (!desktop) {
-          missionDashboard = CompactMissionCommandDashboard(
-            status: status,
-            fleet: fleet,
-            telemetry: telemetry,
-            preview: preview,
-            confirmResult: _confirmResult,
-            confirming: _confirming,
-            onStartMission: _confirmMissionPackage,
-            onPause: _pauseRun,
-            onAbort: _resetRun,
-            onConnectDji: _openDjiConnectionSetup,
-          );
-        } else {
-          missionDashboard = MissionCommandDashboard(
-            status: status,
-            fleet: fleet,
-            telemetry: telemetry,
-            preview: preview,
-            confirmResult: _confirmResult,
-            confirming: _confirming,
-            onStartMission: _confirmMissionPackage,
-            onPause: _pauseRun,
-            onAbort: _resetRun,
-            onConnectDji: _openDjiConnectionSetup,
-          );
-        }
+    if (initialLoad) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        return Column(
-          children: [
-            OfficialDashboardScreen(
-              scenario: widget.scenario,
-              operationsClient: widget.operationsClient,
-              onConnectDji: _openDjiConnectionSetup,
-            ),
-            const SizedBox(height: 12),
-            missionDashboard,
-          ],
-        );
-      },
+    Widget missionDashboard;
+    if (!desktop) {
+      missionDashboard = CompactMissionCommandDashboard(
+        scenario: widget.scenario,
+        status: status,
+        fleet: fleet,
+        telemetry: telemetry,
+        preview: preview,
+        confirmResult: _confirmResult,
+        confirming: _confirming,
+        readinessScore: _liveFeed.readinessScore,
+        routePoints: routePoints,
+        onStartMission: _confirmMissionPackage,
+        onPause: _pauseRun,
+        onAbort: _resetRun,
+        onConnectDji: _openDjiConnectionSetup,
+        onRefreshLive: _refreshLiveFeed,
+        isRefreshing: _liveFeed.isRefreshing,
+      );
+    } else {
+      missionDashboard = MissionCommandDashboard(
+        scenario: widget.scenario,
+        status: status,
+        fleet: fleet,
+        telemetry: telemetry,
+        preview: preview,
+        confirmResult: _confirmResult,
+        confirming: _confirming,
+        readinessScore: _liveFeed.readinessScore,
+        routePoints: routePoints,
+        onStartMission: _confirmMissionPackage,
+        onPause: _pauseRun,
+        onAbort: _resetRun,
+        onConnectDji: _openDjiConnectionSetup,
+        onRefreshLive: _refreshLiveFeed,
+        isRefreshing: _liveFeed.isRefreshing,
+      );
+    }
+
+    return Column(
+      children: [
+        OfficialDashboardScreen(
+          scenario: widget.scenario,
+          operationsClient: widget.operationsClient,
+          onConnectDji: _openDjiConnectionSetup,
+          liveDroneTelemetry: _liveFeed.liveDroneTelemetry,
+          liveTelemetryActive: _liveFeed.hasLiveFleet,
+          activeMissionRecord: _missionRecord,
+        ),
+        const SizedBox(height: 12),
+        MissionSystemPanel(
+          mission: _missionRecord,
+          onPause: _pauseRun,
+          onResume: _resumeMission,
+          onAbort: _resetRun,
+          onComplete: _completeMission,
+        ),
+        const SizedBox(height: 12),
+        missionDashboard,
+      ],
     );
   }
 }
 
 class MissionCommandDashboard extends StatelessWidget {
   const MissionCommandDashboard({
+    required this.scenario,
     required this.status,
     required this.fleet,
     required this.telemetry,
     required this.preview,
     required this.confirmResult,
     required this.confirming,
+    required this.readinessScore,
+    required this.routePoints,
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
     required this.onConnectDji,
+    required this.onRefreshLive,
+    required this.isRefreshing,
     super.key,
   });
 
+  final Scenario scenario;
   final DjiStatus? status;
   final List<DroneSummary> fleet;
   final TelemetrySnapshot telemetry;
   final MissionPreview? preview;
   final MissionConfirmResult? confirmResult;
   final bool confirming;
+  final double readinessScore;
+  final List<Map<String, double>> routePoints;
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
   final VoidCallback onConnectDji;
+  final Future<void> Function() onRefreshLive;
+  final bool isRefreshing;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        MissionHeroStatus(status: status, onConnectDji: onConnectDji),
+        MissionHeroStatus(
+          scenario: scenario,
+          status: status,
+          readinessScore: readinessScore,
+          onConnectDji: onConnectDji,
+          onRefreshLive: onRefreshLive,
+          isRefreshing: isRefreshing,
+        ),
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,6 +319,9 @@ class MissionCommandDashboard extends StatelessWidget {
               child: Column(
                 children: [
                   MissionCommandMap(
+                    status: status,
+                    fleet: fleet,
+                    routePoints: routePoints,
                     missionAvailable: preview?.available ?? false,
                     onStartMission: onStartMission,
                     onPause: onPause,
@@ -243,6 +345,8 @@ class MissionCommandDashboard extends StatelessWidget {
                 onStartMission: onStartMission,
                 onPause: onPause,
                 onAbort: onAbort,
+                onRefreshLive: onRefreshLive,
+                isRefreshing: isRefreshing,
               ),
             ),
           ],
@@ -254,37 +358,57 @@ class MissionCommandDashboard extends StatelessWidget {
 
 class CompactMissionCommandDashboard extends StatelessWidget {
   const CompactMissionCommandDashboard({
+    required this.scenario,
     required this.status,
     required this.fleet,
     required this.telemetry,
     required this.preview,
     required this.confirmResult,
     required this.confirming,
+    required this.readinessScore,
+    required this.routePoints,
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
     required this.onConnectDji,
+    required this.onRefreshLive,
+    required this.isRefreshing,
     super.key,
   });
 
+  final Scenario scenario;
   final DjiStatus? status;
   final List<DroneSummary> fleet;
   final TelemetrySnapshot telemetry;
   final MissionPreview? preview;
   final MissionConfirmResult? confirmResult;
   final bool confirming;
+  final double readinessScore;
+  final List<Map<String, double>> routePoints;
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
   final VoidCallback onConnectDji;
+  final Future<void> Function() onRefreshLive;
+  final bool isRefreshing;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        MissionHeroStatus(status: status, onConnectDji: onConnectDji),
+        MissionHeroStatus(
+          scenario: scenario,
+          status: status,
+          readinessScore: readinessScore,
+          onConnectDji: onConnectDji,
+          onRefreshLive: onRefreshLive,
+          isRefreshing: isRefreshing,
+        ),
         const SizedBox(height: 12),
         MissionCommandMap(
+          status: status,
+          fleet: fleet,
+          routePoints: routePoints,
           missionAvailable: preview?.available ?? false,
           onStartMission: onStartMission,
           onPause: onPause,
@@ -301,6 +425,8 @@ class CompactMissionCommandDashboard extends StatelessWidget {
           onStartMission: onStartMission,
           onPause: onPause,
           onAbort: onAbort,
+          onRefreshLive: onRefreshLive,
+          isRefreshing: isRefreshing,
         ),
         const SizedBox(height: 12),
         FleetHealthStrip(fleet: fleet),
@@ -333,13 +459,21 @@ Color _djiStatusColor(DjiStatus? status) {
 
 class MissionHeroStatus extends StatelessWidget {
   const MissionHeroStatus({
+    required this.scenario,
     required this.status,
+    required this.readinessScore,
     required this.onConnectDji,
+    required this.onRefreshLive,
+    required this.isRefreshing,
     super.key,
   });
 
+  final Scenario scenario;
   final DjiStatus? status;
+  final double readinessScore;
   final VoidCallback onConnectDji;
+  final Future<void> Function() onRefreshLive;
+  final bool isRefreshing;
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +545,7 @@ class MissionHeroStatus extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Canyon Ridge Fire',
+                        scenario.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -422,18 +556,21 @@ class MissionHeroStatus extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 9),
-                      const Text(
-                        'Los Padres National Forest, CA',
+                      Text(
+                        scenario.region,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
                       ),
                       const SizedBox(height: 7),
-                      const Text(
-                        'Mon, Jun 10, 2026 09:42 AM PDT',
+                      Text(
+                        status?.lastSync == null ||
+                                status!.lastSync == 'not configured'
+                            ? 'Awaiting DJI bridge sync'
+                            : 'Last sync · ${status!.lastSync}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Color(0xffe7efea),
                           fontSize: 13,
                         ),
@@ -443,6 +580,8 @@ class MissionHeroStatus extends StatelessWidget {
                         status: status,
                         compact: compact,
                         onConnectDji: onConnectDji,
+                        onRefreshLive: onRefreshLive,
+                        isRefreshing: isRefreshing,
                       ),
                     ],
                   ),
@@ -455,10 +594,12 @@ class MissionHeroStatus extends StatelessWidget {
                     ? CompactReadinessBadge(
                         commandEnabled: status?.commandEnabled ?? false,
                         liveData: status?.liveData ?? false,
+                        readinessScore: readinessScore,
                       )
                     : MissionReadinessCard(
                         commandEnabled: status?.commandEnabled ?? false,
                         liveData: status?.liveData ?? false,
+                        readinessScore: readinessScore,
                       ),
               ),
             ],
@@ -474,12 +615,16 @@ class MissionLinkStatus extends StatelessWidget {
     required this.status,
     required this.compact,
     required this.onConnectDji,
+    required this.onRefreshLive,
+    required this.isRefreshing,
     super.key,
   });
 
   final DjiStatus? status;
   final bool compact;
   final VoidCallback onConnectDji;
+  final Future<void> Function() onRefreshLive;
+  final bool isRefreshing;
 
   @override
   Widget build(BuildContext context) {
@@ -527,6 +672,17 @@ class MissionLinkStatus extends StatelessWidget {
           ),
         ),
         OutlinedButton.icon(
+          onPressed: isRefreshing ? null : () => onRefreshLive(),
+          icon: Icon(isRefreshing ? Icons.hourglass_top : Icons.refresh, size: 16),
+          label: Text(isRefreshing ? 'Syncing' : 'Refresh'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white70),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+        OutlinedButton.icon(
           onPressed: onConnectDji,
           icon: const Icon(Icons.settings_input_antenna, size: 16),
           label: const Text('Connect DJI'),
@@ -568,11 +724,13 @@ class CompactReadinessBadge extends StatelessWidget {
   const CompactReadinessBadge({
     required this.commandEnabled,
     required this.liveData,
+    required this.readinessScore,
     super.key,
   });
 
   final bool commandEnabled;
   final bool liveData;
+  final double readinessScore;
 
   @override
   Widget build(BuildContext context) {
@@ -589,7 +747,7 @@ class CompactReadinessBadge extends StatelessWidget {
             width: 46,
             height: 46,
             child: CircularProgressIndicator(
-              value: liveData ? 0.82 : 0,
+              value: liveData ? readinessScore : 0,
               strokeWidth: 6,
               backgroundColor: const Color(0xff2d3740),
               color: commandEnabled
@@ -600,7 +758,9 @@ class CompactReadinessBadge extends StatelessWidget {
           const SizedBox(width: 9),
           Expanded(
             child: Text(
-              liveData ? '82%\nREADY' : '0%\nOFF',
+              liveData
+                  ? '${(readinessScore * 100).round()}%\nREADY'
+                  : '0%\nOFF',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -619,11 +779,13 @@ class MissionReadinessCard extends StatelessWidget {
   const MissionReadinessCard({
     required this.commandEnabled,
     required this.liveData,
+    required this.readinessScore,
     super.key,
   });
 
   final bool commandEnabled;
   final bool liveData;
+  final double readinessScore;
 
   @override
   Widget build(BuildContext context) {
@@ -650,7 +812,7 @@ class MissionReadinessCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 CircularProgressIndicator(
-                  value: liveData ? 0.82 : 0,
+                  value: liveData ? readinessScore : 0,
                   strokeWidth: 8,
                   backgroundColor: const Color(0xff2d3740),
                   color: commandEnabled
@@ -659,7 +821,7 @@ class MissionReadinessCard extends StatelessWidget {
                 ),
                 Center(
                   child: Text(
-                    liveData ? '82%' : '0%',
+                    liveData ? '${(readinessScore * 100).round()}%' : '0%',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -738,6 +900,8 @@ class CommandRightRail extends StatelessWidget {
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
+    required this.onRefreshLive,
+    required this.isRefreshing,
     super.key,
   });
 
@@ -750,14 +914,16 @@ class CommandRightRail extends StatelessWidget {
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
+  final Future<void> Function() onRefreshLive;
+  final bool isRefreshing;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ConnectedDronesPanel(fleet: fleet),
+        ConnectedDronesPanel(fleet: fleet, status: status),
         const SizedBox(height: 8),
-        TelemetryLinkPanel(telemetry: telemetry),
+        TelemetryLinkPanel(telemetry: telemetry, fleet: fleet, status: status),
         const SizedBox(height: 8),
         MissionActionPanel(
           status: status,
@@ -776,9 +942,14 @@ class CommandRightRail extends StatelessWidget {
 }
 
 class ConnectedDronesPanel extends StatelessWidget {
-  const ConnectedDronesPanel({required this.fleet, super.key});
+  const ConnectedDronesPanel({
+    required this.fleet,
+    required this.status,
+    super.key,
+  });
 
   final List<DroneSummary> fleet;
+  final DjiStatus? status;
 
   @override
   Widget build(BuildContext context) {
@@ -812,13 +983,22 @@ class ConnectedDronesPanel extends StatelessWidget {
           ),
           const Divider(height: 18),
           if (fleet.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18),
               child: Text(
-                'No real DJI aircraft connected',
-                style: TextStyle(
+                switch (status?.connection) {
+                  'waiting-for-bridge' =>
+                    'Ingest configured. Start Cloud API MQTT or Mobile SDK bridge to receive aircraft.',
+                  'bridge-stale' =>
+                    'Bridge feed stale. Restart the Cloud API worker or Mobile SDK bridge.',
+                  'configured' =>
+                    'Connector ready. Publish aircraft state through the bridge ingest endpoint.',
+                  _ => 'No real DJI aircraft connected',
+                },
+                style: const TextStyle(
                   color: Color(0xff62716c),
                   fontWeight: FontWeight.w700,
+                  height: 1.35,
                 ),
               ),
             )
@@ -859,7 +1039,9 @@ class DroneListRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'DRN-0$index',
+                  drone.id.length > 10
+                      ? drone.id.substring(0, 10)
+                      : drone.id,
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
                 Text(
@@ -903,13 +1085,25 @@ class DroneListRow extends StatelessWidget {
 }
 
 class TelemetryLinkPanel extends StatelessWidget {
-  const TelemetryLinkPanel({required this.telemetry, super.key});
+  const TelemetryLinkPanel({
+    required this.telemetry,
+    required this.fleet,
+    required this.status,
+    super.key,
+  });
 
   final TelemetrySnapshot telemetry;
+  final List<DroneSummary> fleet;
+  final DjiStatus? status;
 
   @override
   Widget build(BuildContext context) {
     final configured = telemetry.linkHealth != 'not-configured';
+    final signal = averageFleetSignal(fleet);
+    final latencyMs = configured ? (140 - signal).clamp(35, 120) : null;
+    final dataRateMbps = configured
+        ? (4 + telemetry.routeProgressPct / 25).toStringAsFixed(1)
+        : null;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -933,8 +1127,10 @@ class TelemetryLinkPanel extends StatelessWidget {
               Text(
                 telemetry.linkHealth == 'not-configured'
                     ? 'Not configured'
+                    : telemetry.missionState == 'device-online'
+                    ? signalQualityLabel(signal)
                     : telemetry.linkHealth == 'stable'
-                    ? 'Excellent'
+                    ? signalQualityLabel(signal)
                     : telemetry.linkHealth,
                 style: const TextStyle(
                   color: Color(0xff47d16a),
@@ -949,19 +1145,19 @@ class TelemetryLinkPanel extends StatelessWidget {
               Expanded(
                 child: TelemetryMetric(
                   label: 'Link Quality',
-                  value: configured ? '98%' : '--',
+                  value: configured ? '$signal%' : '--',
                 ),
               ),
               Expanded(
                 child: TelemetryMetric(
                   label: 'Latency',
-                  value: configured ? '120 ms' : '--',
+                  value: configured ? '$latencyMs ms' : '--',
                 ),
               ),
               Expanded(
                 child: TelemetryMetric(
                   label: 'Data Rate',
-                  value: configured ? '8.6 Mbps' : '--',
+                  value: configured ? '$dataRateMbps Mbps' : '--',
                 ),
               ),
             ],
@@ -973,9 +1169,16 @@ class TelemetryLinkPanel extends StatelessWidget {
               child: CustomPaint(painter: TelemetrySparklinePainter()),
             )
           else
-            const Text(
-              'Connect DJI Cloud API or Mobile SDK bridge to receive live telemetry.',
-              style: TextStyle(color: Color(0xffaebbb5), height: 1.35),
+            Text(
+              switch (status?.connection) {
+                'waiting-for-bridge' =>
+                  'Bridge token saved. Start Cloud API MQTT or Mobile SDK ingest to populate telemetry.',
+                'bridge-stale' =>
+                  'Last bridge packet expired. Restart ingest to restore live telemetry.',
+                _ =>
+                  'Connect DJI Cloud API or Mobile SDK bridge to receive live telemetry.',
+              },
+              style: const TextStyle(color: Color(0xffaebbb5), height: 1.35),
             ),
         ],
       ),
@@ -1138,11 +1341,18 @@ class MissionActionPanel extends StatelessWidget {
           ),
           if (!previewAvailable) ...[
             const SizedBox(height: 8),
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'DJI connector not configured',
-                style: TextStyle(
+                switch (status?.connection) {
+                  'waiting-for-bridge' =>
+                    'Waiting for bridge aircraft before mission preview unlocks.',
+                  'bridge-stale' => 'Bridge feed stale · refresh ingest worker',
+                  'bridge-online' when !(status?.liveData ?? false) =>
+                    'Bridge online · waiting for aircraft telemetry',
+                  _ => 'Connect DJI bridge or Cloud API to unlock mission preview',
+                },
+                style: const TextStyle(
                   color: Color(0xffffc857),
                   fontWeight: FontWeight.w800,
                 ),
@@ -1379,7 +1589,9 @@ class FleetHealthCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'DRN-0$index',
+                  drone.id.length > 10
+                      ? drone.id.substring(0, 10)
+                      : drone.id,
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
@@ -1413,8 +1625,14 @@ class FleetHealthCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          const FleetHealthLine(label: 'GPS', value: 'Strong'),
-          const FleetHealthLine(label: 'Link', value: 'Excellent'),
+          FleetHealthLine(
+            label: 'GPS',
+            value: gpsQualityLabel(drone),
+          ),
+          FleetHealthLine(
+            label: 'Link',
+            value: signalQualityLabel(drone.signalPct),
+          ),
           FleetHealthLine(
             label: 'Payload',
             value: drone.connection == 'standby' ? 'Thermal Active' : 'Normal',

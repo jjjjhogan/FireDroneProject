@@ -8,32 +8,93 @@ class AnalyticsTrendBars extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.points,
+    this.accent = const Color(0xff0e7656),
+    this.icon,
     super.key,
   });
 
   final String title;
   final String subtitle;
   final List<AnalyticsTrendPoint> points;
+  final Color accent;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    if (points.isEmpty) {
+      return InfoCard(
+        color: const Color(0xfff8fbfa),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(color: Color(0xff62716c), height: 1.35),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No trend data available.',
+              style: TextStyle(
+                color: Color(0xff62716c),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final maxValue = points.fold<double>(
       0,
       (max, point) => point.value > max ? point.value : max,
     );
 
     return InfoCard(
+      color: const Color(0xfff8fbfa),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(color: Color(0xff62716c), height: 1.35),
+          Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 18, color: accent),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xff62716c),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           for (final point in points) ...[
@@ -59,7 +120,7 @@ class AnalyticsTrendBars extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         children: [
                           Container(
-                            height: 10,
+                            height: 12,
                             decoration: BoxDecoration(
                               color: const Color(0xffedf3f0),
                               borderRadius: BorderRadius.circular(999),
@@ -67,9 +128,14 @@ class AnalyticsTrendBars extends StatelessWidget {
                           ),
                           Container(
                             width: constraints.maxWidth * widthFactor,
-                            height: 10,
+                            height: 12,
                             decoration: BoxDecoration(
-                              color: const Color(0xff0e7656),
+                              gradient: LinearGradient(
+                                colors: [
+                                  accent.withValues(alpha: 0.75),
+                                  accent,
+                                ],
+                              ),
                               borderRadius: BorderRadius.circular(999),
                             ),
                           ),
@@ -84,7 +150,7 @@ class AnalyticsTrendBars extends StatelessWidget {
                   child: Text(
                     '${_formatValue(point.value)} ${point.unit}',
                     textAlign: TextAlign.right,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
               ],

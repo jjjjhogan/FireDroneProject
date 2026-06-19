@@ -2,10 +2,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../models/analytics_snapshot.dart';
+import '../analytics_helpers.dart';
 import 'analytics_chart_card.dart';
+import 'chart_empty_state.dart';
 
-class ThermalConfidenceChart extends StatelessWidget {
-  const ThermalConfidenceChart({
+class ModelPerformanceCharts extends StatelessWidget {
+  const ModelPerformanceCharts({
     required this.confidenceTrend,
     required this.coverageTrend,
     super.key,
@@ -16,15 +18,74 @@ class ThermalConfidenceChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 980;
+        final confidenceChart = ThermalConfidenceLineChart(
+          points: confidenceTrend,
+        );
+        final coverageChart = PatrolCoverageLineChart(points: coverageTrend);
+
+        if (stacked) {
+          return Column(
+            children: [
+              confidenceChart,
+              const SizedBox(height: 16),
+              coverageChart,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: confidenceChart),
+            const SizedBox(width: 16),
+            Expanded(child: coverageChart),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class ThermalConfidenceLineChart extends StatelessWidget {
+  const ThermalConfidenceLineChart({required this.points, super.key});
+
+  final List<AnalyticsTrendPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    if (points.isEmpty) {
+      return AnalyticsChartCard(
+        title: 'Thermal Confidence',
+        subtitle: 'Hourly model ensemble average across active sorties.',
+        icon: Icons.local_fire_department_outlined,
+        accent: const Color(0xff0e7656),
+        chart: const ChartEmptyState(
+          message: 'No thermal confidence series returned by the analytics feed.',
+        ),
+      );
+    }
+
+    final minValue = points.fold<double>(
+      points.first.value,
+      (min, point) => point.value < min ? point.value : min,
+    );
+    final maxValue = points.fold<double>(
+      points.first.value,
+      (max, point) => point.value > max ? point.value : max,
+    );
+
     return AnalyticsChartCard(
-      title: 'Model Confidence & Coverage',
-      subtitle:
-          'Hourly thermal confidence alongside rolling patrol coverage trend.',
-      height: 280,
+      title: 'Thermal Confidence',
+      subtitle: 'Hourly model ensemble average across active sorties.',
+      icon: Icons.local_fire_department_outlined,
+      accent: const Color(0xff0e7656),
       chart: LineChart(
         LineChartData(
-          minY: 70,
-          maxY: 100,
+          minY: (minValue - 8).clamp(0, double.infinity),
+          maxY: maxValue + 4,
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
@@ -55,13 +116,13 @@ class ThermalConfidenceChart extends StatelessWidget {
                 reservedSize: 28,
                 getTitlesWidget: (value, _) {
                   final index = value.toInt();
-                  if (index < 0 || index >= confidenceTrend.length) {
+                  if (index < 0 || index >= points.length) {
                     return const SizedBox.shrink();
                   }
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      confidenceTrend[index].label,
+                      points[index].label,
                       style: const TextStyle(
                         fontSize: 11,
                         color: Color(0xff62716c),
@@ -76,23 +137,115 @@ class ThermalConfidenceChart extends StatelessWidget {
           lineBarsData: [
             LineChartBarData(
               spots: [
-                for (var i = 0; i < confidenceTrend.length; i++)
-                  FlSpot(i.toDouble(), confidenceTrend[i].value),
+                for (var i = 0; i < points.length; i++)
+                  FlSpot(i.toDouble(), points[i].value),
               ],
               isCurved: true,
               color: const Color(0xff0e7656),
               barWidth: 3,
-              dotData: const FlDotData(show: false),
+              dotData: const FlDotData(show: true),
+              belowBarData: BarAreaData(
+                show: true,
+                color: const Color(0x330e7656),
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PatrolCoverageLineChart extends StatelessWidget {
+  const PatrolCoverageLineChart({required this.points, super.key});
+
+  final List<AnalyticsTrendPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    if (points.isEmpty) {
+      return AnalyticsChartCard(
+        title: 'Patrol Coverage',
+        subtitle: 'Rolling weekly corridor completion percentage.',
+        icon: Icons.map_outlined,
+        accent: const Color(0xffffc857),
+        chart: const ChartEmptyState(
+          message: 'No patrol coverage series returned by the analytics feed.',
+        ),
+      );
+    }
+
+    final minValue = points.fold<double>(
+      points.first.value,
+      (min, point) => point.value < min ? point.value : min,
+    );
+    final maxValue = points.fold<double>(
+      points.first.value,
+      (max, point) => point.value > max ? point.value : max,
+    );
+
+    return AnalyticsChartCard(
+      title: 'Patrol Coverage',
+      subtitle: 'Rolling weekly corridor completion percentage.',
+      icon: Icons.map_outlined,
+      accent: const Color(0xffffc857),
+      chart: LineChart(
+        LineChartData(
+          minY: (minValue - 8).clamp(0, double.infinity),
+          maxY: maxValue + 4,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: Colors.grey.withValues(alpha: 0.18),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(),
+            rightTitles: const AxisTitles(),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                getTitlesWidget: (value, _) => Text(
+                  '${value.toInt()}%',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xff62716c),
+                  ),
+                ),
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                getTitlesWidget: (value, _) {
+                  final index = value.toInt();
+                  if (index < 0 || index >= points.length) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      points[index].label,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xff62716c),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
             LineChartBarData(
               spots: [
-                for (var i = 0; i < coverageTrend.length; i++)
-                  FlSpot(
-                    i *
-                        (confidenceTrend.length - 1) /
-                        (coverageTrend.length - 1),
-                    coverageTrend[i].value,
-                  ),
+                for (var i = 0; i < points.length; i++)
+                  FlSpot(i.toDouble(), points[i].value),
               ],
               isCurved: true,
               color: const Color(0xffffc857),
@@ -114,19 +267,33 @@ class MissionHotspotBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxY = missions.fold<double>(
-      0,
-      (max, mission) => mission.hotspotsDetected > max
-          ? mission.hotspotsDetected.toDouble()
-          : max,
+    if (missions.isEmpty) {
+      return AnalyticsChartCard(
+        title: 'Hotspots by Recent Mission',
+        subtitle: 'Detection count per completed or aborted sortie.',
+        icon: Icons.bar_chart,
+        accent: const Color(0xffc2542d),
+        chart: const ChartEmptyState(
+          message: 'No recent missions available for hotspot comparison.',
+          icon: Icons.flight_takeoff_outlined,
+        ),
+      );
+    }
+
+    final maxY = chartMaxY(
+      missions.map((mission) => mission.hotspotsDetected.toDouble()),
+      padding: 1,
+      minimum: 1,
     );
 
     return AnalyticsChartCard(
       title: 'Hotspots by Recent Mission',
       subtitle: 'Detection count per completed or aborted sortie.',
+      icon: Icons.bar_chart,
+      accent: const Color(0xffc2542d),
       chart: BarChart(
         BarChartData(
-          maxY: maxY + 1,
+          maxY: maxY,
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
@@ -160,11 +327,10 @@ class MissionHotspotBarChart extends StatelessWidget {
                   if (index < 0 || index >= missions.length) {
                     return const SizedBox.shrink();
                   }
-                  final label = missions[index].scenarioName.split(' ').first;
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      label,
+                      abbreviateScenarioLabel(missions[index].scenarioName),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 10,

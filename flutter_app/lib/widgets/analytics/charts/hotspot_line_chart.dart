@@ -2,7 +2,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../models/analytics_snapshot.dart';
+import '../analytics_helpers.dart';
 import 'analytics_chart_card.dart';
+import 'chart_empty_state.dart';
 
 class HotspotLineChart extends StatelessWidget {
   const HotspotLineChart({required this.points, super.key});
@@ -14,22 +16,33 @@ class HotspotLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (points.isEmpty) {
+      return AnalyticsChartCard(
+        title: 'Weekly Hotspot Detections',
+        subtitle: 'Thermal cue volume across the last seven patrol days.',
+        icon: Icons.local_fire_department_outlined,
+        accent: _lineColor,
+        chart: const ChartEmptyState(
+          message: 'No weekly detection series returned by the analytics feed.',
+        ),
+      );
+    }
+
     final spots = [
       for (var i = 0; i < points.length; i++)
         FlSpot(i.toDouble(), points[i].value),
     ];
-    final maxY = points.fold<double>(
-      0,
-      (max, point) => point.value > max ? point.value : max,
-    );
+    final maxY = chartMaxY(points.map((point) => point.value));
 
     return AnalyticsChartCard(
       title: 'Weekly Hotspot Detections',
       subtitle: 'Thermal cue volume across the last seven patrol days.',
+      icon: Icons.local_fire_department_outlined,
+      accent: _lineColor,
       chart: LineChart(
         LineChartData(
           minY: 0,
-          maxY: maxY + 2,
+          maxY: maxY,
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
