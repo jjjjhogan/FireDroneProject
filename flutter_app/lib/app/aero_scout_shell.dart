@@ -15,9 +15,14 @@ import '../widgets/layout/sidebar.dart';
 import '../widgets/layout/top_bar.dart';
 
 class AeroScoutShell extends StatefulWidget {
-  const AeroScoutShell({required this.droneClient, super.key});
+  const AeroScoutShell({
+    required this.droneClient,
+    required this.operationsClient,
+    super.key,
+  });
 
   final DroneApiClient droneClient;
+  final OperationsApiClient operationsClient;
 
   @override
   State<AeroScoutShell> createState() => _AeroScoutShellState();
@@ -28,7 +33,6 @@ class _AeroScoutShellState extends State<AeroScoutShell> {
   Scenario _activeScenario = scenarios.first;
   final ScenarioLibraryService _scenarioService =
       const MockScenarioLibraryService();
-  final OperationsApiClient _operationsClient = ResilientOperationsApiClient();
 
   static const _nav = [
     NavItem(Icons.dashboard_outlined, 'Scenario Library'),
@@ -57,14 +61,14 @@ class _AeroScoutShellState extends State<AeroScoutShell> {
       1 => LiveSimulatorScreen(
         scenario: _activeScenario,
         droneClient: widget.droneClient,
-        operationsClient: _operationsClient,
+        operationsClient: widget.operationsClient,
         onScenarioChanged: (scenario) {
           setState(() => _activeScenario = scenario);
         },
       ),
       2 => FleetPage(droneClient: widget.droneClient),
       3 => AnalyticsPage(droneClient: widget.droneClient),
-      _ => AboutDocsScreen(operationsClient: _operationsClient),
+      _ => AboutDocsScreen(operationsClient: widget.operationsClient),
     };
 
     return Scaffold(

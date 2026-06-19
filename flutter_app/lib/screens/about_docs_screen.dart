@@ -68,7 +68,7 @@ class AboutDocsScreen extends StatelessWidget {
                   label: 'Map Provider',
                   value: status.mapProvider,
                   detail: status.mapConfigured
-                      ? 'Tile provider configured by backend'
+                      ? 'Tile provider and GeoJSON layer configured by backend'
                       : 'Using local map placeholder',
                   accent: const Color(0xff0e7656),
                 ),
@@ -557,6 +557,9 @@ class _RoadmapPanel extends StatelessWidget {
           ),
           const _ChecklistLine(
             'Drone camera and thermal stream ingest with a YOLO fire/smoke API.',
+          ),
+          const _ChecklistLine(
+            'Authoritative GIS import, terrain overlays, and airspace/TFR validation.',
           ),
           const _ChecklistLine(
             'Real map provider, incident layers, geofences, and no-fly overlays.',

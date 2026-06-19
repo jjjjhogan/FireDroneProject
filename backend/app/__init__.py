@@ -1,3 +1,5 @@
+import atexit
+
 from flask import Flask
 from flask_cors import CORS
 
@@ -17,5 +19,10 @@ def create_app(config_class=Config):
     @app.route("/health")
     def health():
         return {"status": "ok", "service": "FireDrone API"}
+
+    from app.dji.cloud_bridge import cloud_bridge_manager, init_auto_start_cloud_bridge
+
+    init_auto_start_cloud_bridge(app)
+    atexit.register(cloud_bridge_manager.stop)
 
     return app

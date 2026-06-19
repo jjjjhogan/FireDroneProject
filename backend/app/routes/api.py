@@ -4,7 +4,7 @@ from flask import current_app, request
 
 from app.dji import create_dji_connector
 from app.dji.cloud_api import cloud_api_message_to_ingest_payload
-from app.dji.cloud_bridge import cloud_bridge_manager
+from app.dji.cloud_bridge import cloud_bridge_manager, try_start_cloud_bridge
 from app.dji.ingest import normalize_ingest_payload
 from app.dji.mobile_sdk import mobile_sdk_state_to_ingest_payload
 from app.dji.runtime_config import DjiRuntimeConfigStore
@@ -16,6 +16,8 @@ from app.ops import (
     simulate_command,
 )
 from app.ops.analytics import ANALYTICS_SUMMARY, analytics_graphs_payload
+from app.ops.map_layers import GEOFENCE_FEATURE_COLLECTION, MAP_CENTER, mission_map_layer
+from app.ops.map_search import MapSearchError, search_nominatim_places
 from app.routes import api_bp
 from app.security import require_roles
 
@@ -158,8 +160,9 @@ def dji_save_connection():
     bridge_status = cloud_bridge_manager.status()
     auto_start = bool(payload.get("autoStartCloudBridge", True))
     if auto_start and config["mode"] == "cloud-api" and config["configured"]:
-        bridge_status = cloud_bridge_manager.start(
-            _runtime_config_store().effective_config(current_app.config)
+        bridge_status = try_start_cloud_bridge(
+            current_app.config,
+            _runtime_config_store(),
         )
     return {
         "accepted": True,
@@ -309,17 +312,173 @@ def map_config(identity):
     return _public_map_config()
 
 
+@api_bp.route("/map/geofence", methods=["GET"])
+@require_roles("viewer")
+def map_geofence(identity):
+    return GEOFENCE_FEATURE_COLLECTION
+
+
+@api_bp.route("/map/mission", methods=["GET"])
+@require_roles("viewer")
+def map_mission(identity):
+    state_store = _dji_state_store()
+    state = state_store.read()
+    drones = state.get("drones") if state_store.is_fresh(state) else []
+    return mission_map_layer(alerts=_operations_store().list_alerts(), drones=drones)
+
+
+@api_bp.route("/map/search", methods=["GET"])
+@require_roles("viewer")
+def map_search(identity):
+    query = request.args.get("q", "").strip()
+    if not query:
+        return {"accepted": False, "error": "q query parameter is required"}, 400
+
+    provider = str(current_app.config.get("MAP_SEARCH_PROVIDER", "nominatim")).strip().lower()
+    if provider != "nominatim":
+        return {
+            "accepted": False,
+            "error": f"Unsupported map search provider: {provider}",
+        }, 501
+
+    try:
+        return search_nominatim_places(
+            query,
+            current_app.config.get(
+                "NOMINATIM_SEARCH_URL",
+                "https://nominatim.openstreetmap.org/search",
+            ),
+            current_app.config.get(
+                "NOMINATIM_USER_AGENT",
+                "FireDroneProject/0.1 public-safety-prototype",
+            ),
+            limit=current_app.config.get("MAP_SEARCH_LIMIT", 5),
+        )
+    except ValueError as error:
+        return {"accepted": False, "error": str(error)}, 400
+    except MapSearchError as error:
+        return {"accepted": False, "error": str(error)}, 502
+
+
 def _public_map_config():
     tile_url = str(current_app.config.get("MAP_TILE_URL_TEMPLATE", "")).strip()
     provider = str(current_app.config.get("MAP_PROVIDER", "openstreetmap")).strip()
+    requires_api_key = bool(str(current_app.config.get("MAP_API_KEY", "")).strip())
+    imagery_tile_url = str(
+        current_app.config.get("MAP_IMAGERY_TILE_URL_TEMPLATE", "")
+    ).strip()
+    imagery_provider = str(
+        current_app.config.get("MAP_IMAGERY_PROVIDER", "arcgis-world-imagery")
+    ).strip()
+    imagery_attribution = str(
+        current_app.config.get("MAP_IMAGERY_ATTRIBUTION", "")
+    ).strip()
+    default_basemap = str(
+        current_app.config.get("MAP_DEFAULT_BASEMAP", "satellite")
+    ).strip()
+    basemaps = [
+        {
+            "id": "satellite",
+            "label": "Satellite imagery",
+            "provider": imagery_provider,
+            "tileUrlTemplate": imagery_tile_url,
+            "attribution": imagery_attribution,
+            "configured": bool(imagery_tile_url),
+            "requiresApiKey": False,
+            "policy": _imagery_policy(imagery_provider, imagery_tile_url),
+        },
+        {
+            "id": "streets",
+            "label": "Street map",
+            "provider": provider,
+            "tileUrlTemplate": tile_url,
+            "attribution": str(current_app.config.get("MAP_ATTRIBUTION", "")).strip(),
+            "configured": bool(tile_url),
+            "requiresApiKey": requires_api_key,
+            "policy": _tile_policy(provider, tile_url, requires_api_key),
+        },
+    ]
     return {
         "provider": provider,
         "tileUrlTemplate": tile_url,
         "attribution": str(current_app.config.get("MAP_ATTRIBUTION", "")).strip(),
         "configured": bool(tile_url),
-        "requiresApiKey": bool(str(current_app.config.get("MAP_API_KEY", "")).strip()),
-        "incidentLayerStatus": "placeholder",
-        "geofenceLayerStatus": "placeholder",
+        "requiresApiKey": requires_api_key,
+        "tilePolicy": _tile_policy(provider, tile_url, requires_api_key),
+        "defaultBasemap": default_basemap,
+        "basemaps": basemaps,
+        "center": MAP_CENTER,
+        "incidentLayerStatus": "geojson",
+        "geofenceLayerStatus": "geojson",
+        "geofenceLayerEndpoint": "/api/map/geofence",
+        "missionLayerEndpoint": "/api/map/mission",
+        "searchProvider": str(
+            current_app.config.get("MAP_SEARCH_PROVIDER", "nominatim")
+        ).strip(),
+        "searchEndpoint": "/api/map/search",
+    }
+
+
+def _imagery_policy(provider, tile_url):
+    normalized_provider = provider.strip().lower()
+    normalized_tile_url = tile_url.strip().lower()
+    if not normalized_tile_url:
+        return {
+            "status": "not-configured",
+            "productionReady": False,
+            "message": "No satellite imagery tile provider URL is configured.",
+        }
+    if (
+        normalized_provider == "arcgis-world-imagery"
+        or "world_imagery" in normalized_tile_url
+    ):
+        return {
+            "status": "development-imagery",
+            "productionReady": False,
+            "message": (
+                "ArcGIS World Imagery gives a realistic satellite basemap for "
+                "development previews. Confirm Esri licensing, attribution, "
+                "rate limits, and token requirements before production."
+            ),
+        }
+    return {
+        "status": "operator-configured",
+        "productionReady": True,
+        "message": (
+            "A dedicated imagery provider is configured. Confirm licensing, "
+            "rate limits, attribution, and offline-area policy before field use."
+        ),
+    }
+
+
+def _tile_policy(provider, tile_url, requires_api_key):
+    normalized_provider = provider.strip().lower()
+    normalized_tile_url = tile_url.strip().lower()
+    if not normalized_tile_url:
+        return {
+            "status": "not-configured",
+            "productionReady": False,
+            "message": "No map tile provider URL is configured.",
+        }
+    if (
+        normalized_provider == "openstreetmap"
+        and "tile.openstreetmap.org" in normalized_tile_url
+    ):
+        return {
+            "status": "development-only",
+            "productionReady": False,
+            "message": (
+                "Public OpenStreetMap tile servers are for development previews; "
+                "use a dedicated provider for production."
+            ),
+        }
+    return {
+        "status": "operator-configured",
+        "productionReady": True,
+        "message": (
+            "A dedicated map tile provider is configured. Confirm licensing, "
+            "rate limits, attribution, and offline-area policy before field use."
+        ),
     }
 
 

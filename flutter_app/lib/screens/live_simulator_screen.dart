@@ -39,6 +39,9 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
   late DjiLiveFeed _liveFeed;
   final MissionSystemService _missionSystem = ResilientMissionSystemService();
   MissionRecord? _missionRecord;
+  late Future<MapProviderConfig> _mapConfigFuture;
+  late Future<GeofenceLayer> _geofenceLayerFuture;
+  late Future<MapMissionLayer> _mapMissionLayerFuture;
   MissionConfirmResult? _confirmResult;
   bool _confirming = false;
 
@@ -47,6 +50,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
     super.initState();
     _liveFeed = DjiLiveFeed(widget.droneClient)..addListener(_onLiveFeedUpdated);
     _loadLayoutForScenario(widget.scenario);
+    _loadMapLayers();
     _bootstrapMissionSystem();
   }
 
@@ -55,6 +59,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.scenario != widget.scenario) {
       _loadLayoutForScenario(widget.scenario);
+      _loadMapLayers();
       _bootstrapMissionSystem(resetMission: true);
     }
   }
@@ -104,6 +109,12 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
 
   void _loadLayoutForScenario(Scenario scenario) {
     _layout = cloneLayout(defaultLayoutForScenario(scenario));
+  }
+
+  void _loadMapLayers() {
+    _mapConfigFuture = widget.operationsClient.fetchMapConfig();
+    _geofenceLayerFuture = widget.operationsClient.fetchGeofenceLayer();
+    _mapMissionLayerFuture = widget.operationsClient.fetchMapMissionLayer();
   }
 
   void _pauseRun() {
@@ -183,14 +194,41 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait([
+        _mapConfigFuture,
+        _geofenceLayerFuture,
+        _mapMissionLayerFuture,
+      ]),
+      builder: (context, mapSnapshot) {
+        final mapConfig =
+            mapSnapshot.data?[0] as MapProviderConfig? ??
+            MapProviderConfig.unavailable();
+        final geofenceLayer =
+            mapSnapshot.data?[1] as GeofenceLayer? ??
+            GeofenceLayer.unavailable();
+        final mapMissionLayer =
+            mapSnapshot.data?[2] as MapMissionLayer? ??
+            MapMissionLayer.unavailable();
+
+        return _buildContent(
+          mapConfig: mapConfig,
+          geofenceLayer: geofenceLayer,
+          mapMissionLayer: mapMissionLayer,
+        );
+      },
+    );
+  }
+
+  Widget _buildContent({
+    required MapProviderConfig mapConfig,
+    required GeofenceLayer geofenceLayer,
+    required MapMissionLayer mapMissionLayer,
+  }) {
     final status = _liveFeed.status;
     final fleet = _liveFeed.fleet;
     final telemetry = _liveFeed.telemetry;
     final preview = _liveFeed.preview;
-    final routePoints =
-        preview?.routePoints ??
-        _missionRecord?.routePoints.map((point) => point.toJson()).toList() ??
-        const <Map<String, double>>[];
     final desktop = MediaQuery.sizeOf(context).width >= 1120;
     final initialLoad =
         _liveFeed.isRefreshing && status == null && _missionRecord == null;
@@ -210,7 +248,10 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
         confirmResult: _confirmResult,
         confirming: _confirming,
         readinessScore: _liveFeed.readinessScore,
-        routePoints: routePoints,
+        mapConfig: mapConfig,
+        geofenceLayer: geofenceLayer,
+        mapMissionLayer: mapMissionLayer,
+        operationsClient: widget.operationsClient,
         onStartMission: _confirmMissionPackage,
         onPause: _pauseRun,
         onAbort: _resetRun,
@@ -228,7 +269,10 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
         confirmResult: _confirmResult,
         confirming: _confirming,
         readinessScore: _liveFeed.readinessScore,
-        routePoints: routePoints,
+        mapConfig: mapConfig,
+        geofenceLayer: geofenceLayer,
+        mapMissionLayer: mapMissionLayer,
+        operationsClient: widget.operationsClient,
         onStartMission: _confirmMissionPackage,
         onPause: _pauseRun,
         onAbort: _resetRun,
@@ -273,7 +317,10 @@ class MissionCommandDashboard extends StatelessWidget {
     required this.confirmResult,
     required this.confirming,
     required this.readinessScore,
-    required this.routePoints,
+    required this.mapConfig,
+    required this.geofenceLayer,
+    required this.mapMissionLayer,
+    required this.operationsClient,
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
@@ -291,7 +338,10 @@ class MissionCommandDashboard extends StatelessWidget {
   final MissionConfirmResult? confirmResult;
   final bool confirming;
   final double readinessScore;
-  final List<Map<String, double>> routePoints;
+  final MapProviderConfig mapConfig;
+  final GeofenceLayer geofenceLayer;
+  final MapMissionLayer mapMissionLayer;
+  final OperationsApiClient operationsClient;
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
@@ -319,10 +369,13 @@ class MissionCommandDashboard extends StatelessWidget {
               child: Column(
                 children: [
                   MissionCommandMap(
+                    missionAvailable: preview?.available ?? false,
+                    mapConfig: mapConfig,
+                    geofenceLayer: geofenceLayer,
+                    mapMissionLayer: mapMissionLayer,
+                    operationsClient: operationsClient,
                     status: status,
                     fleet: fleet,
-                    routePoints: routePoints,
-                    missionAvailable: preview?.available ?? false,
                     onStartMission: onStartMission,
                     onPause: onPause,
                     onAbort: onAbort,
@@ -366,7 +419,10 @@ class CompactMissionCommandDashboard extends StatelessWidget {
     required this.confirmResult,
     required this.confirming,
     required this.readinessScore,
-    required this.routePoints,
+    required this.mapConfig,
+    required this.geofenceLayer,
+    required this.mapMissionLayer,
+    required this.operationsClient,
     required this.onStartMission,
     required this.onPause,
     required this.onAbort,
@@ -384,7 +440,10 @@ class CompactMissionCommandDashboard extends StatelessWidget {
   final MissionConfirmResult? confirmResult;
   final bool confirming;
   final double readinessScore;
-  final List<Map<String, double>> routePoints;
+  final MapProviderConfig mapConfig;
+  final GeofenceLayer geofenceLayer;
+  final MapMissionLayer mapMissionLayer;
+  final OperationsApiClient operationsClient;
   final VoidCallback onStartMission;
   final VoidCallback onPause;
   final VoidCallback onAbort;
@@ -406,10 +465,13 @@ class CompactMissionCommandDashboard extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         MissionCommandMap(
+          missionAvailable: preview?.available ?? false,
+          mapConfig: mapConfig,
+          geofenceLayer: geofenceLayer,
+          mapMissionLayer: mapMissionLayer,
+          operationsClient: operationsClient,
           status: status,
           fleet: fleet,
-          routePoints: routePoints,
-          missionAvailable: preview?.available ?? false,
           onStartMission: onStartMission,
           onPause: onPause,
           onAbort: onAbort,
