@@ -4,6 +4,7 @@ This branch no longer treats simulated DJI aircraft as the default product state
 If real DJI data is not configured, the backend and Flutter app intentionally show:
 
 - `connection: not-configured`
+
 - `liveData: false`
 - empty fleet
 - telemetry link health `not-configured`
@@ -46,6 +47,19 @@ FIRE_DRONE_API_BASE=http://127.0.0.1:5000/api
 For local MQTT development with Docker EMQX, see [EMQX_SETUP.md](EMQX_SETUP.md). Typical local values: `DJI_CLOUD_API_MQTT_HOST=127.0.0.1`, `DJI_CLOUD_MQTT_PORT=1883`, `DJI_CLOUD_MQTT_USE_TLS=false`.
 
 Until these values are configured and a Cloud API adapter is connected, the app must show no aircraft.
+
+## Real credentials checklist
+
+When moving from local EMQX to DJI Cloud API in the field:
+
+1. Create a DJI developer application and copy **App ID**, **App Key**, and **App License** into `backend/.env`.
+2. Generate a **Workspace ID** (`DJI_WORKSPACE_ID`) — a UUID **you create** for your platform (not from the DJI developer portal). Use the same value in Pilot 2 JSBridge `platformSetWorkspaceId()` and in future `/workspaces/{workspace_id}/...` API routes. Example format: `18652ed7-e4d7-4f8e-9df7-f44e6e91ff5f`.
+3. Point `DJI_CLOUD_API_MQTT_HOST` at DJI's production MQTT broker (not `127.0.0.1`).
+4. Use TLS: `DJI_CLOUD_MQTT_PORT=8883`, `DJI_CLOUD_MQTT_USE_TLS=true`, plus broker username/password from DJI.
+5. Keep `ALLOW_DJI_COMMANDS=false` until operator safety review is complete.
+6. Run Flask + EMQX/Pilot 2 on the same network; verify `/api/dji/status` reports `bridge-online`.
+
+Local development can skip steps 2–4 partially by using Docker EMQX and `scripts/mqtt_test_publisher.py` (see [EMQX_SETUP.md](EMQX_SETUP.md)).
 
 ## Connection States
 

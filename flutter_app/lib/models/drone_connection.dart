@@ -65,6 +65,7 @@ class DjiConnectionConfig {
     required this.appIdConfigured,
     required this.mobileBridgeEndpoint,
     required this.updatedAt,
+    this.cloudBridge,
   });
 
   final bool configured;
@@ -78,8 +79,10 @@ class DjiConnectionConfig {
   final bool appIdConfigured;
   final String mobileBridgeEndpoint;
   final String? updatedAt;
+  final CloudBridgeStatus? cloudBridge;
 
   factory DjiConnectionConfig.fromJson(Map<String, dynamic> json) {
+    final bridgeJson = json['cloudBridge'];
     return DjiConnectionConfig(
       configured: json['configured'] as bool? ?? false,
       mode: json['mode'] as String? ?? 'not-configured',
@@ -94,7 +97,52 @@ class DjiConnectionConfig {
       appIdConfigured: json['appIdConfigured'] as bool? ?? false,
       mobileBridgeEndpoint: json['mobileBridgeEndpoint'] as String? ?? '',
       updatedAt: json['updatedAt'] as String?,
+      cloudBridge: bridgeJson is Map<String, dynamic>
+          ? CloudBridgeStatus.fromJson(bridgeJson)
+          : null,
     );
+  }
+}
+
+class CloudBridgeStatus {
+  const CloudBridgeStatus({
+    required this.running,
+    required this.state,
+    required this.host,
+    this.lastMessageAt,
+    this.lastError,
+  });
+
+  final bool running;
+  final String state;
+  final String host;
+  final String? lastMessageAt;
+  final String? lastError;
+
+  factory CloudBridgeStatus.fromJson(Map<String, dynamic> json) {
+    return CloudBridgeStatus(
+      running: json['running'] as bool? ?? false,
+      state: json['state'] as String? ?? 'stopped',
+      host: json['host'] as String? ?? '',
+      lastMessageAt: json['lastMessageAt'] as String?,
+      lastError: json['lastError'] as String?,
+    );
+  }
+
+  String get displayLabel {
+    if (running && state == 'subscribed') {
+      return 'MQTT subscribed';
+    }
+    if (state == 'starting') {
+      return 'MQTT starting';
+    }
+    if (state == 'stopped') {
+      return 'MQTT stopped';
+    }
+    if (state == 'connect-failed' || state == 'missing-config') {
+      return 'MQTT $state';
+    }
+    return 'MQTT $state';
   }
 }
 

@@ -32,6 +32,7 @@ class LiveSimulatorScreen extends StatefulWidget {
 class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
   late SimulationLayout _layout;
   late Future<DjiStatus> _statusFuture;
+  late Future<DjiConnectionConfig> _connectionFuture;
   late Future<List<DroneSummary>> _fleetFuture;
   late Future<TelemetrySnapshot> _telemetryFuture;
   late Future<MissionPreview> _previewFuture;
@@ -64,6 +65,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
 
   void _loadDjiData() {
     _statusFuture = widget.droneClient.fetchStatus();
+    _connectionFuture = widget.droneClient.fetchConnectionConfig();
     _fleetFuture = widget.droneClient.fetchFleet();
     _telemetryFuture = widget.droneClient.fetchTelemetry();
     _previewFuture = widget.droneClient.previewMission(
@@ -120,6 +122,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
     return FutureBuilder<List<dynamic>>(
       future: Future.wait([
         _statusFuture,
+        _connectionFuture,
         _fleetFuture,
         _telemetryFuture,
         _previewFuture,
@@ -130,9 +133,11 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
       builder: (context, snapshot) {
         final data = snapshot.data;
         final status = data?[0] as DjiStatus?;
-        final fleet = data?[1] as List<DroneSummary>? ?? const [];
+        final connection = data?[1] as DjiConnectionConfig?;
+        final cloudBridge = connection?.cloudBridge;
+        final fleet = data?[2] as List<DroneSummary>? ?? const [];
         final telemetry =
-            data?[2] as TelemetrySnapshot? ??
+            data?[3] as TelemetrySnapshot? ??
             const TelemetrySnapshot(
               activeDroneId: 'unknown',
               missionState: 'not-configured',
@@ -142,19 +147,20 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
               firePerimeterRisk: 'unknown',
               linkHealth: 'not-configured',
             );
-        final preview = data?[3] as MissionPreview?;
+        final preview = data?[4] as MissionPreview?;
         final mapConfig =
-            data?[4] as MapProviderConfig? ?? MapProviderConfig.unavailable();
+            data?[5] as MapProviderConfig? ?? MapProviderConfig.unavailable();
         final geofenceLayer =
-            data?[5] as GeofenceLayer? ?? GeofenceLayer.unavailable();
+            data?[6] as GeofenceLayer? ?? GeofenceLayer.unavailable();
         final mapMissionLayer =
-            data?[6] as MapMissionLayer? ?? MapMissionLayer.unavailable();
+            data?[7] as MapMissionLayer? ?? MapMissionLayer.unavailable();
         final desktop = MediaQuery.sizeOf(context).width >= 1120;
 
         Widget missionDashboard;
         if (!desktop) {
           missionDashboard = CompactMissionCommandDashboard(
             status: status,
+            cloudBridge: cloudBridge,
             fleet: fleet,
             telemetry: telemetry,
             preview: preview,
@@ -172,6 +178,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
         } else {
           missionDashboard = MissionCommandDashboard(
             status: status,
+            cloudBridge: cloudBridge,
             fleet: fleet,
             telemetry: telemetry,
             preview: preview,
@@ -207,6 +214,7 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
 class MissionCommandDashboard extends StatelessWidget {
   const MissionCommandDashboard({
     required this.status,
+    required this.cloudBridge,
     required this.fleet,
     required this.telemetry,
     required this.preview,
@@ -224,6 +232,7 @@ class MissionCommandDashboard extends StatelessWidget {
   });
 
   final DjiStatus? status;
+  final CloudBridgeStatus? cloudBridge;
   final List<DroneSummary> fleet;
   final TelemetrySnapshot telemetry;
   final MissionPreview? preview;
@@ -242,7 +251,11 @@ class MissionCommandDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        MissionHeroStatus(status: status, onConnectDji: onConnectDji),
+        MissionHeroStatus(
+          status: status,
+          cloudBridge: cloudBridge,
+          onConnectDji: onConnectDji,
+        ),
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,6 +303,7 @@ class MissionCommandDashboard extends StatelessWidget {
 class CompactMissionCommandDashboard extends StatelessWidget {
   const CompactMissionCommandDashboard({
     required this.status,
+    required this.cloudBridge,
     required this.fleet,
     required this.telemetry,
     required this.preview,
@@ -307,6 +321,7 @@ class CompactMissionCommandDashboard extends StatelessWidget {
   });
 
   final DjiStatus? status;
+  final CloudBridgeStatus? cloudBridge;
   final List<DroneSummary> fleet;
   final TelemetrySnapshot telemetry;
   final MissionPreview? preview;
@@ -325,7 +340,11 @@ class CompactMissionCommandDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        MissionHeroStatus(status: status, onConnectDji: onConnectDji),
+        MissionHeroStatus(
+          status: status,
+          cloudBridge: cloudBridge,
+          onConnectDji: onConnectDji,
+        ),
         const SizedBox(height: 12),
         MissionCommandMap(
           missionAvailable: preview?.available ?? false,
@@ -381,11 +400,13 @@ Color _djiStatusColor(DjiStatus? status) {
 class MissionHeroStatus extends StatelessWidget {
   const MissionHeroStatus({
     required this.status,
+    required this.cloudBridge,
     required this.onConnectDji,
     super.key,
   });
 
   final DjiStatus? status;
+  final CloudBridgeStatus? cloudBridge;
   final VoidCallback onConnectDji;
 
   @override
@@ -488,6 +509,7 @@ class MissionHeroStatus extends StatelessWidget {
                       const SizedBox(height: 14),
                       MissionLinkStatus(
                         status: status,
+                        cloudBridge: cloudBridge,
                         compact: compact,
                         onConnectDji: onConnectDji,
                       ),
@@ -519,12 +541,14 @@ class MissionHeroStatus extends StatelessWidget {
 class MissionLinkStatus extends StatelessWidget {
   const MissionLinkStatus({
     required this.status,
+    required this.cloudBridge,
     required this.compact,
     required this.onConnectDji,
     super.key,
   });
 
   final DjiStatus? status;
+  final CloudBridgeStatus? cloudBridge;
   final bool compact;
   final VoidCallback onConnectDji;
 
@@ -556,6 +580,26 @@ class MissionLinkStatus extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
+        if (cloudBridge != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: cloudBridge!.running && cloudBridge!.state == 'subscribed'
+                  ? const Color(0xff27c38c)
+                  : const Color(0xff4a5560),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              cloudBridge!.displayLabel,
+              style: TextStyle(
+                color: cloudBridge!.running && cloudBridge!.state == 'subscribed'
+                    ? const Color(0xff10231d)
+                    : Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(

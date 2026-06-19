@@ -111,7 +111,34 @@ curl -X POST http://127.0.0.1:5000/api/dji/connection \
 
 Set `DJI_AUTO_START_CLOUD_BRIDGE=false` to disable startup auto-connect.
 
+## Keep telemetry fresh during local dev
+
+Without a real DJI aircraft, bridge state goes **stale** after `DJI_TELEMETRY_TTL_SECONDS` (default 300s). Use the test publisher to republish synthetic OSD messages every 60 seconds:
+
+```bash
+cd backend
+python scripts/mqtt_test_publisher.py --no-tls --interval 60
+```
+
+One-shot publish (same as the inline Python snippet below):
+
+```bash
+python scripts/mqtt_test_publisher.py --no-tls --once
+```
+
+The script reads `DJI_CLOUD_API_MQTT_HOST` and `DJI_CLOUD_MQTT_PORT` from `backend/.env`. Stop with Ctrl+C.
+
+## Verify MQTT publish (optional)
+
+With the broker running:
+
+```bash
+python scripts/mqtt_test_publisher.py --no-tls --once
+```
+
 ## Alternative: standalone worker script
+
+Forward real MQTT traffic to Flask ingest instead of using the in-app bridge:
 
 ```bash
 python scripts/dji_cloud_mqtt_worker.py --no-tls --mqtt-host 127.0.0.1 --mqtt-port 1883 --token YOUR_TOKEN
