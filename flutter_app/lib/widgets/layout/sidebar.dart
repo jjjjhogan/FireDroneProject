@@ -72,8 +72,12 @@ class Sidebar extends StatelessWidget {
                     label: Text(items[index].label),
                   ),
                 ),
-              const Spacer(),
-              const MissionOverviewCard(),
+              const SizedBox(height: 12),
+              const Expanded(
+                child: SingleChildScrollView(
+                  child: MissionOverviewCard(),
+                ),
+              ),
             ],
           ),
         ),

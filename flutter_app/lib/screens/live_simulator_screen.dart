@@ -195,16 +195,20 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
           );
         }
 
-        return Column(
-          children: [
-            missionDashboard,
-            const SizedBox(height: 12),
-            OfficialDashboardScreen(
-              scenario: widget.scenario,
-              operationsClient: widget.operationsClient,
-              onConnectDji: _openDjiConnectionSetup,
-            ),
-          ],
+        return SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              missionDashboard,
+              const SizedBox(height: 12),
+              OfficialDashboardScreen(
+                scenario: widget.scenario,
+                operationsClient: widget.operationsClient,
+                onConnectDji: _openDjiConnectionSetup,
+              ),
+            ],
+          ),
         );
       },
     );
@@ -414,10 +418,14 @@ class MissionHeroStatus extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 600;
+        final reserveReadiness = constraints.maxWidth < 980;
         final statusLabel = _djiStatusLabel(status);
         final statusColor = _djiStatusColor(status);
+        final heroHeight = compact
+            ? 214.0
+            : (reserveReadiness ? 248.0 : 228.0);
         return Container(
-          height: compact ? 214 : 228,
+          height: heroHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             color: const Color(0xff0c1715),
@@ -449,7 +457,7 @@ class MissionHeroStatus extends StatelessWidget {
               ),
               Positioned(
                 left: compact ? 22 : 26,
-                right: compact ? 18 : null,
+                right: reserveReadiness ? 14 : 190,
                 bottom: compact ? 24 : 28,
                 child: SizedBox(
                   width: compact ? null : 520,

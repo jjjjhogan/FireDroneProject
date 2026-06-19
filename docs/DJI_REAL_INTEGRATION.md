@@ -86,6 +86,8 @@ Operators can configure the local backend from the Flutter web app:
 
 The browser sends the secret fields to the local Flask backend. The backend stores them in `DJI_RUNTIME_CONFIG_FILE`, which defaults to `backend/instance/dji_runtime_config.json`. The app never returns saved token, password, app key, or license values back to the browser; it only returns redacted `...Configured` booleans.
 
+**Connect DJI save behavior:** Saving from Flutter POSTs to `/api/dji/connection` and updates the runtime JSON file only — not `backend/.env`. Leave secret fields blank to keep previously saved values. Leave non-secret fields blank (host, workspace, port) to keep existing values as well. Set `DJI_*` in `.env` for server boot defaults; runtime config overrides when non-empty.
+
 The runtime config file is ignored by git through `backend/instance/`.
 
 Backend endpoints used by the setup dialog:
