@@ -282,27 +282,31 @@ class _LiveSimulatorScreenState extends State<LiveSimulatorScreen> {
       );
     }
 
-    return Column(
-      children: [
-        OfficialDashboardScreen(
-          scenario: widget.scenario,
-          operationsClient: widget.operationsClient,
-          onConnectDji: _openDjiConnectionSetup,
-          liveDroneTelemetry: _liveFeed.liveDroneTelemetry,
-          liveTelemetryActive: _liveFeed.hasLiveFleet,
-          activeMissionRecord: _missionRecord,
-        ),
-        const SizedBox(height: 12),
-        MissionSystemPanel(
-          mission: _missionRecord,
-          onPause: _pauseRun,
-          onResume: _resumeMission,
-          onAbort: _resetRun,
-          onComplete: _completeMission,
-        ),
-        const SizedBox(height: 12),
-        missionDashboard,
-      ],
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OfficialDashboardScreen(
+            scenario: widget.scenario,
+            operationsClient: widget.operationsClient,
+            onConnectDji: _openDjiConnectionSetup,
+            liveDroneTelemetry: _liveFeed.liveDroneTelemetry,
+            liveTelemetryActive: _liveFeed.hasLiveFleet,
+            activeMissionRecord: _missionRecord,
+          ),
+          const SizedBox(height: 12),
+          MissionSystemPanel(
+            mission: _missionRecord,
+            onPause: _pauseRun,
+            onResume: _resumeMission,
+            onAbort: _resetRun,
+            onComplete: _completeMission,
+          ),
+          const SizedBox(height: 12),
+          missionDashboard,
+        ],
+      ),
     );
   }
 }
@@ -542,10 +546,14 @@ class MissionHeroStatus extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 600;
+        final reserveReadiness = constraints.maxWidth < 980;
         final statusLabel = _djiStatusLabel(status);
         final statusColor = _djiStatusColor(status);
+        final heroHeight = compact
+            ? 214.0
+            : (reserveReadiness ? 248.0 : 228.0);
         return Container(
-          height: compact ? 214 : 228,
+          height: heroHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             color: const Color(0xff0c1715),
@@ -577,7 +585,7 @@ class MissionHeroStatus extends StatelessWidget {
               ),
               Positioned(
                 left: compact ? 22 : 26,
-                right: compact ? 18 : null,
+                right: reserveReadiness ? 14 : 190,
                 bottom: compact ? 24 : 28,
                 child: SizedBox(
                   width: compact ? null : 520,

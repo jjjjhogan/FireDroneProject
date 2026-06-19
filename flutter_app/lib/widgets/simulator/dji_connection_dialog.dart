@@ -23,7 +23,7 @@ class _DjiConnectionDialogState extends State<DjiConnectionDialog> {
   final _ingestToken = TextEditingController();
   final _operatorLabel = TextEditingController();
   final _cloudHost = TextEditingController();
-  final _cloudPort = TextEditingController(text: '8883');
+  final _cloudPort = TextEditingController();
   final _cloudUsername = TextEditingController();
   final _cloudPassword = TextEditingController();
   final _cloudClientId = TextEditingController(text: 'firedrone-web-connector');
@@ -85,7 +85,8 @@ class _DjiConnectionDialogState extends State<DjiConnectionDialog> {
           ingestToken: _ingestToken.text.trim(),
           operatorLabel: _operatorLabel.text.trim(),
           cloudMqttHost: _cloudHost.text.trim(),
-          cloudMqttPort: int.tryParse(_cloudPort.text.trim()) ?? 8883,
+          cloudMqttPort:
+              int.tryParse(_cloudPort.text.trim()) ?? 0,
           cloudMqttUsername: _cloudUsername.text.trim(),
           cloudMqttPassword: _cloudPassword.text,
           cloudMqttClientId: _cloudClientId.text.trim(),
@@ -410,6 +411,7 @@ class _CloudApiFields extends StatelessWidget {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'MQTT port',
+                    hintText: 'Leave blank to keep saved port',
                     border: OutlineInputBorder(),
                   ),
                 ),

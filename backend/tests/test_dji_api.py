@@ -583,6 +583,34 @@ class DjiRuntimeConnectionConfigTest(unittest.TestCase):
         self.assertNotIn("operator-secret", json.dumps(data))
         self.assertNotIn("pilot-password", json.dumps(data))
 
+    def test_saving_connection_keeps_existing_mqtt_port_when_omitted(self):
+        config_file = self.config_file
+        config_file.write_text(
+            json.dumps(
+                {
+                    "mode": "cloud-api",
+                    "DJI_INGEST_TOKEN": "operator-secret",
+                    "DJI_CLOUD_API_MQTT_HOST": "127.0.0.1",
+                    "DJI_CLOUD_MQTT_PORT": 1883,
+                }
+            ),
+            encoding="utf-8",
+        )
+        response = self.client.post(
+            "/api/dji/connection",
+            json={
+                "mode": "cloud-api",
+                "ingestToken": "operator-secret",
+                "cloudMqttHost": "127.0.0.1",
+                "cloudMqttPort": 0,
+                "workspaceId": "workspace-123",
+                "autoStartCloudBridge": False,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        saved = json.loads(config_file.read_text(encoding="utf-8"))
+        self.assertEqual(saved["DJI_CLOUD_MQTT_PORT"], 1883)
+
         status = self.client.get("/api/dji/status").get_json()
         self.assertEqual(status["connection"], "waiting-for-bridge")
         self.assertTrue(status["ingestConfigured"])

@@ -490,18 +490,20 @@ class _MissionCommandMapState extends State<MissionCommandMap> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 520;
+          final stackedHeader = constraints.maxWidth < 700;
           return Stack(
             children: [
               Positioned.fill(child: _buildInteractiveMissionMap()),
               Positioned(
                 left: 16,
                 top: 14,
+                right: stackedHeader ? 16 : null,
                 child: MapTitlePill(missionAvailable: widget.missionAvailable),
               ),
               Positioned(
-                left: compact ? 84 : 260,
+                left: stackedHeader ? 16 : 250,
                 right: 78,
-                top: compact ? 96 : 14,
+                top: stackedHeader ? 112 : 14,
                 child: MapSearchPanel(
                   controller: _searchController,
                   compact: compact,
@@ -515,7 +517,7 @@ class _MissionCommandMapState extends State<MissionCommandMap> {
               ),
               Positioned(
                 left: 16,
-                top: compact ? 96 : 72,
+                top: stackedHeader ? 112 : 72,
                 child: MapToolRail(
                   compact: compact,
                   routeVisible: _routeVisible,

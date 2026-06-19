@@ -28,6 +28,12 @@ def _int_value(value, default):
         return default
 
 
+def _port_value(payload_port, existing_port, default=8883):
+    if payload_port in (None, "", 0):
+        return _int_value(existing_port, default)
+    return _int_value(payload_port, default)
+
+
 class DjiRuntimeConfigStore:
     def __init__(self, path):
         self.path = Path(path)
@@ -68,7 +74,7 @@ class DjiRuntimeConfigStore:
                 payload.get("cloudMqttHost"),
                 existing.get("DJI_CLOUD_API_MQTT_HOST", ""),
             ),
-            "DJI_CLOUD_MQTT_PORT": _int_value(
+            "DJI_CLOUD_MQTT_PORT": _port_value(
                 payload.get("cloudMqttPort"),
                 existing.get("DJI_CLOUD_MQTT_PORT", 8883),
             ),
