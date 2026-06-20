@@ -1,7 +1,17 @@
 import secrets
+import json
+import urllib.parse
+import urllib.request
 
-from flask import current_app, request
+from flask import current_app, redirect, request
 
+from app.accounts.google_oauth_config import GoogleOAuthRuntimeConfigStore
+from app.accounts.store import (
+    AccountError,
+    AccountStore,
+    AuthenticationError,
+    OAuthStateError,
+)
 from app.dji import create_dji_connector
 from app.dji.cloud_api import cloud_api_message_to_ingest_payload
 from app.dji.cloud_bridge import cloud_bridge_manager, try_start_cloud_bridge
@@ -76,6 +86,162 @@ def _operations_store():
             "instance/operations.sqlite3",
         )
     )
+
+
+def _account_store():
+    return AccountStore(
+        current_app.config.get(
+            "APP_DATABASE_FILE",
+            "instance/operations.sqlite3",
+        )
+    )
+
+
+def _google_oauth_runtime_config_store():
+    return GoogleOAuthRuntimeConfigStore(
+        current_app.config.get(
+            "GOOGLE_OAUTH_RUNTIME_CONFIG_FILE",
+            "instance/google_oauth_config.json",
+        )
+    )
+
+
+def _google_oauth_runtime_setup_allowed():
+    if not current_app.config.get("GOOGLE_OAUTH_RUNTIME_CONFIG_ALLOWED", True):
+        return False
+    return request.remote_addr in {"127.0.0.1", "::1", "localhost"}
+
+
+def _account_from_bearer():
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Bearer "):
+        return None, ({"error": "Missing account bearer token"}, 401)
+    token = header.removeprefix("Bearer ").strip()
+    account = _account_store().account_for_token(token)
+    if account is None:
+        return None, ({"error": "Invalid account bearer token"}, 401)
+    return account, None
+
+
+def _bearer_token():
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Bearer "):
+        return ""
+    return header.removeprefix("Bearer ").strip()
+
+
+def _account_response(token, account, status_code=200):
+    return {
+        "accepted": True,
+        "tokenType": "Bearer",
+        "token": token,
+        "account": account,
+    }, status_code
+
+
+def _account_error(error):
+    status_code = getattr(error, "status_code", 400)
+    return {"accepted": False, "error": str(error)}, status_code
+
+
+def _google_oauth_config():
+    effective_config = _google_oauth_runtime_config_store().effective_config(
+        current_app.config
+    )
+    client_id = str(effective_config.get("GOOGLE_OAUTH_CLIENT_ID", "")).strip()
+    client_secret = str(
+        effective_config.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
+    ).strip()
+    host_url = request.host_url.rstrip("/")
+    redirect_uri = str(
+        effective_config.get("GOOGLE_OAUTH_REDIRECT_URI", "")
+        or f"{host_url}/api/accounts/google/callback"
+    ).strip()
+    return {
+        "clientId": client_id,
+        "clientSecret": client_secret,
+        "redirectUri": redirect_uri,
+        "authUrl": str(
+            effective_config.get(
+                "GOOGLE_OAUTH_AUTH_URL",
+                "https://accounts.google.com/o/oauth2/v2/auth",
+            )
+        ).strip(),
+        "tokenUrl": str(
+            effective_config.get(
+                "GOOGLE_OAUTH_TOKEN_URL",
+                "https://oauth2.googleapis.com/token",
+            )
+        ).strip(),
+        "userinfoUrl": str(
+            effective_config.get(
+                "GOOGLE_OAUTH_USERINFO_URL",
+                "https://openidconnect.googleapis.com/v1/userinfo",
+            )
+        ).strip(),
+    }
+
+
+def _missing_google_config(config):
+    missing = []
+    if not config["clientId"]:
+        missing.append("GOOGLE_OAUTH_CLIENT_ID")
+    if not config["clientSecret"]:
+        missing.append("GOOGLE_OAUTH_CLIENT_SECRET")
+    return missing
+
+
+def _frontend_url():
+    return str(
+        current_app.config.get("FRONTEND_APP_URL", "http://127.0.0.1:8151/")
+    ).strip()
+
+
+def _safe_return_url(value):
+    fallback = _frontend_url()
+    candidate = str(value or fallback).strip() or fallback
+    fallback_parts = urllib.parse.urlparse(fallback)
+    candidate_parts = urllib.parse.urlparse(candidate)
+    if (
+        candidate_parts.scheme in {"http", "https"}
+        and candidate_parts.netloc == fallback_parts.netloc
+    ):
+        return candidate
+    return fallback
+
+
+def _append_query(url, params):
+    parts = urllib.parse.urlparse(url)
+    query = dict(urllib.parse.parse_qsl(parts.query, keep_blank_values=True))
+    query.update(params)
+    return urllib.parse.urlunparse(
+        parts._replace(query=urllib.parse.urlencode(query))
+    )
+
+
+def _json_post(url, payload):
+    data = urllib.parse.urlencode(payload).encode("utf-8")
+    request_obj = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(request_obj, timeout=15) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _json_get(url, token):
+    request_obj = urllib.request.Request(
+        url,
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+        method="GET",
+    )
+    with urllib.request.urlopen(request_obj, timeout=15) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
 def _write_ingest(payload):
@@ -304,6 +470,209 @@ def auth_session(identity):
         "role": identity["role"],
         "rbacEnabled": bool(current_app.config.get("AUTH_REQUIRED", False)),
     }
+
+
+@api_bp.route("/accounts/register", methods=["POST"])
+def register_account():
+    payload = request.get_json(silent=True) or {}
+    try:
+        token, account = _account_store().register(payload)
+    except AccountError as error:
+        return _account_error(error)
+    return _account_response(token, account, 201)
+
+
+@api_bp.route("/accounts/login", methods=["POST"])
+def login_account():
+    payload = request.get_json(silent=True) or {}
+    try:
+        token, account = _account_store().login(payload)
+    except AuthenticationError as error:
+        return _account_error(error)
+    except AccountError as error:
+        return _account_error(error)
+    return _account_response(token, account)
+
+
+@api_bp.route("/accounts/session/complete", methods=["POST"])
+def complete_account_login_code():
+    payload = request.get_json(silent=True) or {}
+    try:
+        token, account = _account_store().complete_login_code(payload.get("loginCode"))
+    except AuthenticationError as error:
+        return _account_error(error)
+    return _account_response(token, account)
+
+
+@api_bp.route("/accounts/google/status", methods=["GET"])
+def google_oauth_status():
+    config = _google_oauth_config()
+    missing = _missing_google_config(config)
+    public_config = _google_oauth_runtime_config_store().public_config(
+        current_app.config,
+        config["redirectUri"],
+    )
+    return {
+        "provider": "google",
+        "configured": not missing,
+        "missingConfiguration": missing,
+        "redirectUri": config["redirectUri"],
+        "scope": "openid email profile",
+        "clientIdConfigured": public_config["clientIdConfigured"],
+        "clientSecretConfigured": public_config["clientSecretConfigured"],
+        "setupAllowed": _google_oauth_runtime_setup_allowed(),
+        "updatedAt": public_config["updatedAt"],
+    }
+
+
+@api_bp.route("/accounts/google/config", methods=["PUT"])
+def save_google_oauth_config():
+    if not _google_oauth_runtime_setup_allowed():
+        return {
+            "accepted": False,
+            "error": "Google OAuth runtime setup is only available from localhost",
+        }, 403
+    config = _google_oauth_config()
+    payload = request.get_json(silent=True) or {}
+    try:
+        _google_oauth_runtime_config_store().write_from_payload(
+            payload,
+            config["redirectUri"],
+        )
+    except ValueError as error:
+        return {"accepted": False, "error": str(error)}, 400
+    updated = _google_oauth_config()
+    public_config = _google_oauth_runtime_config_store().public_config(
+        current_app.config,
+        updated["redirectUri"],
+    )
+    return {
+        "accepted": True,
+        "provider": "google",
+        "configured": public_config["configured"],
+        "missingConfiguration": _missing_google_config(updated),
+        "redirectUri": updated["redirectUri"],
+        "scope": "openid email profile",
+        "clientIdConfigured": public_config["clientIdConfigured"],
+        "clientSecretConfigured": public_config["clientSecretConfigured"],
+        "setupAllowed": _google_oauth_runtime_setup_allowed(),
+        "updatedAt": public_config["updatedAt"],
+    }
+
+
+@api_bp.route("/accounts/google/start", methods=["GET"])
+def start_google_oauth():
+    config = _google_oauth_config()
+    missing = _missing_google_config(config)
+    if missing:
+        return {
+            "provider": "google",
+            "configured": False,
+            "missingConfiguration": missing,
+            "error": "Google OAuth is not configured",
+        }, 409
+
+    return_url = _safe_return_url(request.args.get("returnUrl"))
+    state = _account_store().create_oauth_state("google", return_url)
+    params = {
+        "client_id": config["clientId"],
+        "redirect_uri": config["redirectUri"],
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "offline",
+        "prompt": "select_account",
+        "include_granted_scopes": "true",
+    }
+    return {
+        "provider": "google",
+        "configured": True,
+        "authorizationUrl": f"{config['authUrl']}?{urllib.parse.urlencode(params)}",
+    }
+
+
+@api_bp.route("/accounts/google/callback", methods=["GET"])
+def google_oauth_callback():
+    config = _google_oauth_config()
+    code = request.args.get("code", "").strip()
+    state = request.args.get("state", "").strip()
+    try:
+        return_url = _account_store().consume_oauth_state("google", state)
+        if not code:
+            raise AccountError("Missing Google authorization code")
+        token_response = _json_post(
+            config["tokenUrl"],
+            {
+                "code": code,
+                "client_id": config["clientId"],
+                "client_secret": config["clientSecret"],
+                "redirect_uri": config["redirectUri"],
+                "grant_type": "authorization_code",
+            },
+        )
+        access_token = str(token_response.get("access_token") or "").strip()
+        if not access_token:
+            raise AccountError("Google token response did not include access token")
+        profile = _json_get(config["userinfoUrl"], access_token)
+        account = _account_store().upsert_google_account(profile)
+        login_code = _account_store().create_login_code(account["accountId"])
+        return redirect(
+            _append_query(
+                return_url,
+                {"provider": "google", "accountLoginCode": login_code},
+            )
+        )
+    except (AccountError, OAuthStateError) as error:
+        return redirect(
+            _append_query(
+                _frontend_url(),
+                {"provider": "google", "accountError": str(error)},
+            )
+        )
+
+
+@api_bp.route("/accounts/me", methods=["GET"])
+def current_account():
+    account, error = _account_from_bearer()
+    if error is not None:
+        return error
+    return {"authenticated": True, "account": account}
+
+
+@api_bp.route("/accounts/logout", methods=["POST"])
+def logout_account():
+    account, error = _account_from_bearer()
+    if error is not None:
+        return error
+    revoked = _account_store().revoke_session(_bearer_token())
+    return {
+        "accepted": True,
+        "revoked": revoked,
+        "accountId": account["accountId"],
+    }
+
+
+@api_bp.route("/accounts/data", methods=["GET"])
+def account_data():
+    account, error = _account_from_bearer()
+    if error is not None:
+        return error
+    return {"accountId": account["accountId"], "data": account["data"]}
+
+
+@api_bp.route("/accounts/data", methods=["PUT"])
+def update_account_data():
+    account, error = _account_from_bearer()
+    if error is not None:
+        return error
+    payload = request.get_json(silent=True) or {}
+    try:
+        data = _account_store().update_account_data(account["accountId"], payload)
+    except AccountError as error:
+        return _account_error(error)
+    if data is None:
+        return {"accepted": False, "error": "Account not found"}, 404
+    return {"accepted": True, "accountId": account["accountId"], "data": data}
 
 
 @api_bp.route("/map/config", methods=["GET"])

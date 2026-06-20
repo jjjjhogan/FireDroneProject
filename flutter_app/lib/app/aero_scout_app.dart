@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 
 import 'aero_scout_shell.dart';
+import '../services/account_api_client.dart';
 import '../services/drone_api_client.dart';
 import '../services/operations_api_client.dart';
 
 class AeroScoutApp extends StatelessWidget {
-  const AeroScoutApp({this.droneClient, this.operationsClient, super.key});
+  const AeroScoutApp({
+    this.accountClient,
+    this.droneClient,
+    this.operationsClient,
+    super.key,
+  });
 
+  final AccountApiClient? accountClient;
   final DroneApiClient? droneClient;
   final OperationsApiClient? operationsClient;
 
@@ -25,6 +32,7 @@ class AeroScoutApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: AeroScoutShell(
+        accountClient: accountClient ?? HttpAccountApiClient(),
         droneClient: droneClient ?? ResilientDroneApiClient(),
         operationsClient: operationsClient ?? ResilientOperationsApiClient(),
       ),

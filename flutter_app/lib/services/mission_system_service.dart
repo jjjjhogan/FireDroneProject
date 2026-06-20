@@ -106,8 +106,8 @@ class HttpMissionSystemService implements MissionSystemService {
   }) async {
     final json = await _postJson('/missions/$missionId/transition', {
       'status': status,
-      if (notes != null) 'notes': notes,
-      if (progressPct != null) 'progressPct': progressPct,
+      'notes': ?notes,
+      'progressPct': ?progressPct,
     });
     return MissionRecord.fromJson(json['mission'] as Map<String, dynamic>);
   }

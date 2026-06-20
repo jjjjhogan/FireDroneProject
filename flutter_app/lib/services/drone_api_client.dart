@@ -7,6 +7,7 @@ import '../models/analytics_snapshot.dart';
 import '../models/drone_connection.dart';
 import '../models/scenario.dart';
 import '../models/simulation_layout.dart';
+import 'api_config.dart';
 
 abstract class DroneApiClient {
   Future<DjiStatus> fetchStatus();
@@ -104,13 +105,13 @@ class ResilientDroneApiClient implements DroneApiClient {
 
 class HttpDroneApiClient implements DroneApiClient {
   HttpDroneApiClient({Uri? baseUri, http.Client? client})
-    : baseUri = baseUri ?? Uri.parse('http://127.0.0.1:5000/api'),
+    : baseUri = baseUri ?? defaultApiBaseUri(),
       _client = client ?? http.Client();
 
   final Uri baseUri;
   final http.Client _client;
 
-  Uri _uri(String path) => baseUri.replace(path: '${baseUri.path}$path');
+  Uri _uri(String path) => apiUri(baseUri, path);
 
   Future<Map<String, dynamic>> _getJson(String path) async {
     final response = await _client.get(_uri(path));

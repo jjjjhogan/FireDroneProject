@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 
 import '../../models/nav_item.dart';
+import '../../services/account_api_client.dart';
+import '../account/account_dialogs.dart';
 
 class Sidebar extends StatelessWidget {
   const Sidebar({
     required this.items,
     required this.selected,
     required this.onSelect,
+    required this.accountSession,
+    required this.onSignIn,
+    required this.onAccountData,
+    required this.onSignOut,
     super.key,
   });
 
   final List<NavItem> items;
   final int selected;
   final ValueChanged<int> onSelect;
+  final AccountSession? accountSession;
+  final VoidCallback onSignIn;
+  final VoidCallback onAccountData;
+  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -50,32 +60,45 @@ class Sidebar extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 30),
-              for (var index = 0; index < items.length; index++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: TextButton.icon(
-                    style: TextButton.styleFrom(
-                      foregroundColor: selected == index
-                          ? const Color(0xff10231d)
-                          : const Color(0xffd8e7e1),
-                      backgroundColor: selected == index
-                          ? const Color(0xffb7f1d8)
-                          : Colors.transparent,
-                      minimumSize: const Size.fromHeight(46),
-                      alignment: Alignment.centerLeft,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () => onSelect(index),
-                    icon: Icon(items[index].icon),
-                    label: Text(items[index].label),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              const Expanded(
+              Expanded(
                 child: SingleChildScrollView(
-                  child: MissionOverviewCard(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var index = 0; index < items.length; index++)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: selected == index
+                                  ? const Color(0xff10231d)
+                                  : const Color(0xffd8e7e1),
+                              backgroundColor: selected == index
+                                  ? const Color(0xffb7f1d8)
+                                  : Colors.transparent,
+                              minimumSize: const Size.fromHeight(46),
+                              alignment: Alignment.centerLeft,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () => onSelect(index),
+                            icon: Icon(items[index].icon),
+                            label: Text(items[index].label),
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+                      AccountAccessPanel(
+                        session: accountSession,
+                        onSignIn: onSignIn,
+                        onAccountData: onAccountData,
+                        onSignOut: onSignOut,
+                        dark: true,
+                      ),
+                      const SizedBox(height: 14),
+                      const MissionOverviewCard(),
+                    ],
+                  ),
                 ),
               ),
             ],

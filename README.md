@@ -213,6 +213,53 @@ python3 -m http.server 8146 --bind 127.0.0.1 -d build/web
 
 Then open `http://127.0.0.1:8146/`.
 
+To test the same API-base wiring used by Render:
+
+```bash
+cd flutter_app
+/Users/xavier/development/flutter/bin/flutter build web \
+  --dart-define=FIRE_DRONE_API_BASE=http://127.0.0.1:5000/api
+```
+
+## Deploy On Render
+
+The repository includes a root `render.yaml` Blueprint for two Render services:
+
+- `firedrone-api`: Flask backend Web Service
+- `firedrone-command`: Flutter web Static Site
+
+Render will read `render.yaml` from the repository root. The backend uses:
+
+```bash
+pip install -r requirements.txt
+gunicorn --bind 0.0.0.0:$PORT wsgi:app
+```
+
+The frontend uses `flutter_app/render-build.sh`, which downloads Flutter `3.44.1` in Render's build environment and runs:
+
+```bash
+flutter build web --release --dart-define=FIRE_DRONE_API_BASE=https://firedrone-api.onrender.com/api
+```
+
+Production environment values to verify in Render:
+
+```env
+DRONE_CONNECTOR=mock
+ALLOW_DJI_COMMANDS=false
+AUTH_REQUIRED=false
+GOOGLE_OAUTH_RUNTIME_CONFIG_ALLOWED=false
+GOOGLE_OAUTH_CLIENT_ID=<Google OAuth web client id>
+GOOGLE_OAUTH_CLIENT_SECRET=<Google OAuth web client secret>
+GOOGLE_OAUTH_REDIRECT_URI=https://firedrone-api.onrender.com/api/accounts/google/callback
+FRONTEND_APP_URL=https://firedrone-command.onrender.com/
+FIRE_DRONE_API_BASE=https://firedrone-api.onrender.com/api
+```
+
+If Render assigns different service URLs, update `FRONTEND_APP_URL`,
+`FIRE_DRONE_API_BASE`, and `GOOGLE_OAUTH_REDIRECT_URI` in Render. Also add the
+final callback URL to Google Cloud Console under the OAuth web client's
+authorized redirect URIs.
+
 ## Verification
 
 From `flutter_app/`:

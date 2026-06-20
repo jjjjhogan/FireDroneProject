@@ -59,6 +59,29 @@ class Config:
     )
     AUTH_REQUIRED = _env("AUTH_REQUIRED", "false").lower() == "true"
     PUBLIC_SAFETY_TOKENS = _env("PUBLIC_SAFETY_TOKENS")
+    FRONTEND_APP_URL = _env("FRONTEND_APP_URL", "http://127.0.0.1:8151/")
+    GOOGLE_OAUTH_CLIENT_ID = _env("GOOGLE_OAUTH_CLIENT_ID")
+    GOOGLE_OAUTH_CLIENT_SECRET = _env("GOOGLE_OAUTH_CLIENT_SECRET")
+    GOOGLE_OAUTH_REDIRECT_URI = _env("GOOGLE_OAUTH_REDIRECT_URI")
+    GOOGLE_OAUTH_RUNTIME_CONFIG_FILE = _env_path(
+        "GOOGLE_OAUTH_RUNTIME_CONFIG_FILE",
+        BASE_DIR / "instance" / "google_oauth_config.json",
+    )
+    GOOGLE_OAUTH_RUNTIME_CONFIG_ALLOWED = (
+        _env("GOOGLE_OAUTH_RUNTIME_CONFIG_ALLOWED", "true").lower() == "true"
+    )
+    GOOGLE_OAUTH_AUTH_URL = _env(
+        "GOOGLE_OAUTH_AUTH_URL",
+        "https://accounts.google.com/o/oauth2/v2/auth",
+    )
+    GOOGLE_OAUTH_TOKEN_URL = _env(
+        "GOOGLE_OAUTH_TOKEN_URL",
+        "https://oauth2.googleapis.com/token",
+    )
+    GOOGLE_OAUTH_USERINFO_URL = _env(
+        "GOOGLE_OAUTH_USERINFO_URL",
+        "https://openidconnect.googleapis.com/v1/userinfo",
+    )
     MAP_PROVIDER = _env("MAP_PROVIDER", "openstreetmap")
     MAP_TILE_URL_TEMPLATE = _env(
         "MAP_TILE_URL_TEMPLATE",

@@ -37,6 +37,9 @@ def _identity_from_request():
     token = header.removeprefix("Bearer ").strip()
     role = _token_map().get(token)
     if not role:
+        account_identity = _account_identity_from_token(token)
+        if account_identity is not None:
+            return account_identity, None
         return None, ({"error": "Invalid bearer token"}, 401)
 
     return {
@@ -44,6 +47,28 @@ def _identity_from_request():
         "role": role,
         "authenticated": True,
     }, None
+
+
+def _account_identity_from_token(token):
+    try:
+        from app.accounts import AccountStore
+
+        account = AccountStore(
+            current_app.config.get(
+                "APP_DATABASE_FILE",
+                "instance/operations.sqlite3",
+            )
+        ).account_for_token(token)
+    except Exception:
+        return None
+    if account is None:
+        return None
+    return {
+        "actor": account["email"],
+        "role": account["role"],
+        "authenticated": True,
+        "accountId": account["accountId"],
+    }
 
 
 def _role_allowed(actual, allowed):

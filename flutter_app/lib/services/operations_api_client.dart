@@ -6,6 +6,7 @@ import '../models/audit_log_entry.dart';
 import '../models/command.dart';
 import '../models/fire_detection_event.dart';
 import '../models/operations_enums.dart';
+import 'api_config.dart';
 
 abstract class OperationsApiClient {
   Future<BackendIntegrationStatus> fetchIntegrationStatus();
@@ -861,7 +862,7 @@ class HttpOperationsApiClient implements OperationsApiClient {
     Uri? baseUri,
     http.Client? client,
     String? authToken,
-  }) : baseUri = baseUri ?? Uri.parse('http://127.0.0.1:5000/api'),
+  }) : baseUri = baseUri ?? defaultApiBaseUri(),
        _client = client ?? http.Client(),
        authToken =
            authToken ??
@@ -874,13 +875,10 @@ class HttpOperationsApiClient implements OperationsApiClient {
   final http.Client _client;
   final String authToken;
 
-  Uri _uri(String path) => baseUri.replace(path: '${baseUri.path}$path');
+  Uri _uri(String path) => apiUri(baseUri, path);
 
   Uri _uriWithQuery(String path, Map<String, String> queryParameters) {
-    return baseUri.replace(
-      path: '${baseUri.path}$path',
-      queryParameters: queryParameters,
-    );
+    return apiUri(baseUri, path, queryParameters: queryParameters);
   }
 
   Map<String, String> get _headers {

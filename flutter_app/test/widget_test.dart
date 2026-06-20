@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fire_drone_app/main.dart';
+import 'package:fire_drone_app/services/account_api_client.dart';
+import 'package:fire_drone_app/services/browser_redirect.dart';
 import 'package:fire_drone_app/services/operations_api_client.dart';
 
 void main() {
@@ -11,9 +13,11 @@ void main() {
     tester.view.physicalSize = const Size(1440, 960);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
+      clearStoredAccountToken();
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
+    clearStoredAccountToken();
 
     await tester.pumpWidget(
       const AeroScoutApp(operationsClient: TestOperationsApiClient()),
@@ -199,9 +203,11 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
+      clearStoredAccountToken();
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
+    clearStoredAccountToken();
 
     await tester.pumpWidget(
       const AeroScoutApp(operationsClient: TestOperationsApiClient()),
@@ -242,9 +248,11 @@ void main() {
     tester.view.physicalSize = const Size(1440, 960);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
+      clearStoredAccountToken();
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
+    clearStoredAccountToken();
 
     await tester.pumpWidget(
       const AeroScoutApp(operationsClient: TestOperationsApiClient()),
@@ -271,6 +279,224 @@ void main() {
       find.text('Search focus: Los Padres National Forest'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('account registration signs in and saves account-bound data', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      clearStoredAccountToken();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    clearStoredAccountToken();
+
+    final accountClient = TestAccountApiClient();
+    await tester.pumpWidget(
+      AeroScoutApp(
+        accountClient: accountClient,
+        operationsClient: const TestOperationsApiClient(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Create account'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('account-email-field')),
+      'pilot@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('account-password-field')),
+      'strong-password-123',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('account-display-name-field')),
+      'Incident Pilot',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('account-organization-field')),
+      'AeroScout Ops',
+    );
+    await tester.tap(find.text('Create workspace'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Incident Pilot'), findsWidgets);
+    expect(find.text('pilot@example.com'), findsWidgets);
+    expect(find.text('Account Data'), findsOneWidget);
+
+    await tester.tap(find.text('Account Data'));
+    await tester.pumpAndSettle();
+    expect(find.text('Account-bound mission data'), findsOneWidget);
+    expect(find.text('Workspace ID'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('account-workspace-field')),
+      'workspace-alpha',
+    );
+    await tester.tap(find.text('Save account data'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Saved to account'), findsOneWidget);
+    expect(
+      accountClient.savedData?.djiConnection.workspaceId,
+      'workspace-alpha',
+    );
+  });
+
+  testWidgets('account dialog exposes real Google OAuth configuration state', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      clearStoredAccountToken();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    clearStoredAccountToken();
+
+    await tester.pumpWidget(
+      AeroScoutApp(
+        accountClient: TestAccountApiClient(googleConfigured: false),
+        operationsClient: const TestOperationsApiClient(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('Google login not configured'), findsOneWidget);
+    expect(find.textContaining('GOOGLE_OAUTH_CLIENT_ID'), findsOneWidget);
+    expect(find.textContaining('GOOGLE_OAUTH_CLIENT_SECRET'), findsOneWidget);
+    expect(find.text('Configure Google login'), findsOneWidget);
+  });
+
+  testWidgets('account dialog saves Google OAuth config and enables Google', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      clearStoredAccountToken();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    clearStoredAccountToken();
+
+    final accountClient = TestAccountApiClient(googleConfigured: false);
+    await tester.pumpWidget(
+      AeroScoutApp(
+        accountClient: accountClient,
+        operationsClient: const TestOperationsApiClient(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Google login not configured'), findsOneWidget);
+    await tester.tap(find.text('Configure Google login'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Open Google Cloud'), findsOneWidget);
+    expect(find.text('Copy redirect URI'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('google-client-id-field')),
+      'runtime-client.apps.googleusercontent.com',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('google-client-secret-field')),
+      'runtime-secret',
+    );
+    await tester.tap(find.text('Save Google config'));
+    await tester.pumpAndSettle();
+
+    expect(
+      accountClient.savedGoogleClientId,
+      'runtime-client.apps.googleusercontent.com',
+    );
+    expect(accountClient.savedGoogleClientSecret, 'runtime-secret');
+    expect(find.text('Google login not configured'), findsNothing);
+    await tester.tap(find.text('Continue with Google'));
+    await tester.pumpAndSettle();
+
+    expect(accountClient.googleReturnUrl, isNotEmpty);
+  });
+
+  testWidgets('stored account token restores session and sign out clears it', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      clearStoredAccountToken();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    saveAccountToken('acct-stored-token');
+    final accountClient = TestAccountApiClient();
+    await tester.pumpWidget(
+      AeroScoutApp(
+        accountClient: accountClient,
+        operationsClient: const TestOperationsApiClient(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Incident Pilot'), findsWidgets);
+    expect(find.text('pilot@example.com'), findsWidgets);
+    expect(accountClient.currentAccountToken, 'acct-stored-token');
+
+    await tester.tap(find.byTooltip('Sign out'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign in'), findsOneWidget);
+    expect(storedAccountToken(), isNull);
+    expect(accountClient.loggedOutToken, 'acct-stored-token');
+  });
+
+  testWidgets('compact account data dialog exposes sign out', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      clearStoredAccountToken();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    saveAccountToken('acct-compact-token');
+    final accountClient = TestAccountApiClient();
+    await tester.pumpWidget(
+      AeroScoutApp(
+        accountClient: accountClient,
+        operationsClient: const TestOperationsApiClient(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Account Data'), findsOneWidget);
+    await tester.tap(find.byTooltip('Account Data'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Account-bound mission data'), findsOneWidget);
+    await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Sign in'), findsOneWidget);
+    expect(storedAccountToken(), isNull);
+    expect(accountClient.loggedOutToken, 'acct-compact-token');
   });
 }
 
@@ -456,5 +682,171 @@ class TestOperationsApiClient extends UnavailableOperationsApiClient {
         ),
       ),
     ];
+  }
+}
+
+class TestAccountApiClient extends AccountApiClient {
+  TestAccountApiClient({this.googleConfigured = true});
+
+  bool googleConfigured;
+  AccountSession? session;
+  AccountData? savedData;
+  String? googleReturnUrl;
+  String? currentAccountToken;
+  String? loggedOutToken;
+  String? savedGoogleClientId;
+  String? savedGoogleClientSecret;
+
+  @override
+  Future<GoogleOAuthStatus> fetchGoogleOAuthStatus() async {
+    return GoogleOAuthStatus(
+      configured: googleConfigured,
+      missingConfiguration: googleConfigured
+          ? const []
+          : const ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET'],
+      redirectUri: 'http://127.0.0.1:5000/api/accounts/google/callback',
+      scope: 'openid email profile',
+      clientIdConfigured: googleConfigured,
+      clientSecretConfigured: googleConfigured,
+      setupAllowed: true,
+      updatedAt: googleConfigured ? '2026-06-18T00:00:00Z' : '',
+    );
+  }
+
+  @override
+  Future<GoogleOAuthStatus> saveGoogleOAuthConfig({
+    required String clientId,
+    required String clientSecret,
+    required String redirectUri,
+  }) async {
+    savedGoogleClientId = clientId;
+    savedGoogleClientSecret = clientSecret;
+    googleConfigured = true;
+    return GoogleOAuthStatus(
+      configured: true,
+      missingConfiguration: const [],
+      redirectUri: redirectUri,
+      scope: 'openid email profile',
+      clientIdConfigured: true,
+      clientSecretConfigured: true,
+      setupAllowed: true,
+      updatedAt: '2026-06-18T00:00:00Z',
+    );
+  }
+
+  @override
+  Future<String> startGoogleOAuth({required String returnUrl}) async {
+    googleReturnUrl = returnUrl;
+    return 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test';
+  }
+
+  @override
+  Future<AccountSession> completeLoginCode(String loginCode) async {
+    session = AccountSession(
+      token: 'acct-google-token',
+      tokenType: 'Bearer',
+      account: Account(
+        accountId: 'acct-google',
+        email: 'googlepilot@example.com',
+        displayName: 'Google Pilot',
+        organization: '',
+        role: 'operator',
+        authProvider: 'google',
+        avatarUrl: '',
+        data: AccountData.defaults(),
+      ),
+    );
+    return session!;
+  }
+
+  @override
+  Future<AccountSession> currentAccount(String token) async {
+    currentAccountToken = token;
+    session ??= AccountSession(
+      token: token,
+      tokenType: 'Bearer',
+      account: Account(
+        accountId: 'acct-test',
+        email: 'pilot@example.com',
+        displayName: 'Incident Pilot',
+        organization: 'AeroScout Ops',
+        role: 'operator',
+        authProvider: 'password',
+        avatarUrl: '',
+        data: AccountData.defaults(organization: 'AeroScout Ops'),
+      ),
+    );
+    return session!;
+  }
+
+  @override
+  Future<void> logout(String token) async {
+    loggedOutToken = token;
+    session = null;
+  }
+
+  @override
+  Future<AccountData> fetchAccountData(String token) async {
+    return session!.account.data;
+  }
+
+  @override
+  Future<AccountSession> login({
+    required String email,
+    required String password,
+  }) async {
+    session = AccountSession(
+      token: 'acct-test-token',
+      tokenType: 'Bearer',
+      account: Account(
+        accountId: 'acct-test',
+        email: email,
+        displayName: 'Incident Pilot',
+        organization: 'AeroScout Ops',
+        role: 'operator',
+        authProvider: 'password',
+        avatarUrl: '',
+        data: AccountData.defaults(organization: 'AeroScout Ops'),
+      ),
+    );
+    return session!;
+  }
+
+  @override
+  Future<AccountSession> register({
+    required String email,
+    required String password,
+    required String displayName,
+    required String organization,
+  }) async {
+    session = AccountSession(
+      token: 'acct-test-token',
+      tokenType: 'Bearer',
+      account: Account(
+        accountId: 'acct-test',
+        email: email,
+        displayName: displayName,
+        organization: organization,
+        role: 'operator',
+        authProvider: 'password',
+        avatarUrl: '',
+        data: AccountData.defaults(organization: organization),
+      ),
+    );
+    return session!;
+  }
+
+  @override
+  Future<AccountData> updateAccountData({
+    required String token,
+    required AccountData data,
+  }) async {
+    savedData = data;
+    session = AccountSession(
+      token: session!.token,
+      tokenType: session!.tokenType,
+      account: session!.account.copyWith(data: data),
+    );
+    return data;
   }
 }
