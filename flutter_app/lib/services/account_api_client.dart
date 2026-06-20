@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
+
 abstract class AccountApiClient {
   Future<AccountSession> register({
     required String email,
@@ -41,13 +43,13 @@ abstract class AccountApiClient {
 
 class HttpAccountApiClient implements AccountApiClient {
   HttpAccountApiClient({Uri? baseUri, http.Client? client})
-    : baseUri = baseUri ?? Uri.parse('http://127.0.0.1:5000/api'),
+    : baseUri = baseUri ?? defaultApiBaseUri(),
       _client = client ?? http.Client();
 
   final Uri baseUri;
   final http.Client _client;
 
-  Uri _uri(String path) => baseUri.replace(path: '${baseUri.path}$path');
+  Uri _uri(String path) => apiUri(baseUri, path);
 
   Map<String, String> _headers([String? token]) {
     return {
