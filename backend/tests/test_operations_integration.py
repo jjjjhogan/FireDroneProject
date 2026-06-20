@@ -235,7 +235,7 @@ class OpsIntegrationTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertEqual(data["source"], "backend-mission-gis")
-        self.assertEqual(data["route"]["id"], "canyon-ridge-route")
+        self.assertEqual(data["route"]["id"], "min-mountains-perimeter-route")
         self.assertGreaterEqual(len(data["route"]["points"]), 4)
         self.assertGreaterEqual(len(data["alerts"]), 2)
         self.assertGreaterEqual(len(data["drones"]), 1)

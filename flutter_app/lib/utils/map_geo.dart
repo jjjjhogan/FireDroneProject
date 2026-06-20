@@ -15,8 +15,8 @@ class MapViewport {
   final double centerLng;
   final int zoom;
 
-  static const defaultCenterLat = 34.62;
-  static const defaultCenterLng = -119.72;
+  static const defaultCenterLat = 37.211;
+  static const defaultCenterLng = -119.54;
 
   factory MapViewport.fromFleet(List<DroneSummary> fleet) {
     final positioned = fleet
