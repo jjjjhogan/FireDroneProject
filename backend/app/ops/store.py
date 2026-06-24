@@ -1,9 +1,8 @@
 import json
-import sqlite3
 from contextlib import contextmanager
-from pathlib import Path
 from uuid import uuid4
 
+from app.db import Database
 from app.dji.state_store import utc_now_iso
 
 
@@ -40,88 +39,97 @@ SAFETY_CHECKLIST_STATUSES = {
 }
 
 
-class OperationsStore:
-    def __init__(self, path):
-        self.path = Path(path)
+OPS_SCHEMA_STATEMENTS = [
+    """
+    create table if not exists audit_entries (
+      entry_id text primary key,
+      timestamp text not null,
+      actor text not null,
+      role text not null,
+      action text not null,
+      target_id text not null,
+      details text not null
+    )
+    """,
+    """
+    create table if not exists alerts (
+      event_id text primary key,
+      detection_type text not null,
+      confidence double precision not null,
+      severity text not null,
+      lat double precision not null,
+      lon double precision not null,
+      source_drone_id text not null,
+      image_uri text not null,
+      thermal_uri text not null,
+      timestamp text not null,
+      status text not null,
+      reviewer text,
+      review_timestamp text,
+      notes text not null,
+      raw_json text not null
+    )
+    """,
+    """
+    create table if not exists safety_checklist (
+      key text primary key,
+      status text not null,
+      notes text not null,
+      engaged integer not null default 0,
+      updated_at text not null,
+      updated_by text not null
+    )
+    """,
+    """
+    create table if not exists missions (
+      mission_id text primary key,
+      scenario_id text not null,
+      scenario_name text not null,
+      area text not null,
+      status text not null,
+      assigned_drone_id text not null,
+      operator_name text not null,
+      route_points_json text not null,
+      progress_pct integer not null default 0,
+      estimated_duration_min integer not null default 0,
+      risk_level text not null default 'unknown',
+      data_source text not null default 'simulation',
+      notes text not null,
+      started_at text not null,
+      updated_at text not null,
+      completed_at text
+    )
+    """,
+    """
+    create index if not exists missions_status_idx
+      on missions(status, updated_at desc)
+    """,
+]
 
-    def _connect(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(self.path)
-        connection.row_factory = sqlite3.Row
-        self._ensure_schema(connection)
-        return connection
+
+class OperationsStore:
+    def __init__(self, database=None, path=None):
+        if isinstance(database, Database):
+            self.db = database
+        elif isinstance(database, str) and path is None:
+            self.db = Database(sqlite_path=database)
+        elif path is not None:
+            self.db = Database(sqlite_path=path)
+        else:
+            self.db = Database(sqlite_path="instance/operations.sqlite3")
+        self._schema_initialized = False
 
     @contextmanager
     def _session(self):
-        connection = self._connect()
-        try:
+        with self.db.session() as connection:
+            if not self._schema_initialized:
+                self._ensure_schema(connection)
+                self._schema_initialized = True
             yield connection
-        finally:
-            connection.close()
 
     def _ensure_schema(self, connection):
-        connection.executescript(
-            """
-            create table if not exists audit_entries (
-              entry_id text primary key,
-              timestamp text not null,
-              actor text not null,
-              role text not null,
-              action text not null,
-              target_id text not null,
-              details text not null
-            );
-
-            create table if not exists alerts (
-              event_id text primary key,
-              detection_type text not null,
-              confidence real not null,
-              severity text not null,
-              lat real not null,
-              lon real not null,
-              source_drone_id text not null,
-              image_uri text not null,
-              thermal_uri text not null,
-              timestamp text not null,
-              status text not null,
-              reviewer text,
-              review_timestamp text,
-              notes text not null,
-              raw_json text not null
-            );
-
-            create table if not exists safety_checklist (
-              key text primary key,
-              status text not null,
-              notes text not null,
-              engaged integer not null default 0,
-              updated_at text not null,
-              updated_by text not null
-            );
-
-            create table if not exists missions (
-              mission_id text primary key,
-              scenario_id text not null,
-              scenario_name text not null,
-              area text not null,
-              status text not null,
-              assigned_drone_id text not null,
-              operator_name text not null,
-              route_points_json text not null,
-              progress_pct integer not null default 0,
-              estimated_duration_min integer not null default 0,
-              risk_level text not null default 'unknown',
-              data_source text not null default 'simulation',
-              notes text not null,
-              started_at text not null,
-              updated_at text not null,
-              completed_at text
-            );
-
-            create index if not exists missions_status_idx
-              on missions(status, updated_at desc);
-            """
-        )
+        for statement in OPS_SCHEMA_STATEMENTS:
+            connection.execute(statement)
         connection.commit()
 
     def record_audit(self, actor, role, action, target_id, details):
@@ -421,7 +429,7 @@ class OperationsStore:
         }
 
     def list_missions(self, limit=20):
-        with self._connect() as connection:
+        with self._session() as connection:
             rows = connection.execute(
                 """
                 select *
@@ -434,7 +442,7 @@ class OperationsStore:
         return [self._mission_from_row(row) for row in rows]
 
     def get_mission(self, mission_id):
-        with self._connect() as connection:
+        with self._session() as connection:
             row = connection.execute(
                 "select * from missions where mission_id = ?",
                 (mission_id,),
@@ -442,7 +450,7 @@ class OperationsStore:
         return self._mission_from_row(row) if row else None
 
     def get_active_mission(self):
-        with self._connect() as connection:
+        with self._session() as connection:
             row = connection.execute(
                 """
                 select *
@@ -500,7 +508,7 @@ class OperationsStore:
             "completedAt": None,
         }
 
-        with self._connect() as connection:
+        with self._session() as connection:
             connection.execute(
                 """
                 insert into missions
@@ -562,7 +570,7 @@ class OperationsStore:
             "updatedAt": utc_now_iso(),
         }
 
-        with self._connect() as connection:
+        with self._session() as connection:
             connection.execute(
                 """
                 update missions
@@ -608,7 +616,7 @@ class OperationsStore:
                 "updatedAt": timestamp,
             }
 
-        with self._connect() as connection:
+        with self._session() as connection:
             if accepted and updated["missionId"] != mission_id:
                 connection.execute(
                     "delete from missions where mission_id = ?",
@@ -664,7 +672,7 @@ class OperationsStore:
         if status in self.TERMINAL_MISSION_STATUSES:
             completed_at = timestamp
 
-        with self._connect() as connection:
+        with self._session() as connection:
             connection.execute(
                 """
                 update missions

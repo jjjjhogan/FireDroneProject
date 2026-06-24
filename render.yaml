@@ -34,6 +34,9 @@ services:
         value: nominatim
       - key: NOMINATIM_USER_AGENT
         value: FireDroneProject/0.1 public-safety-prototype
+      # Neon Postgres connection string (postgresql://...). When set, SQLite is not used.
+      - key: DATABASE_URL
+        sync: false
 
   - type: web
     name: firedrone-command

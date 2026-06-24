@@ -51,13 +51,11 @@ def _identity_from_request():
 
 def _account_identity_from_token(token):
     try:
-        from app.accounts import AccountStore
+        from app.db import create_database
+        from app.accounts.store import AccountStore
 
         account = AccountStore(
-            current_app.config.get(
-                "APP_DATABASE_FILE",
-                "instance/operations.sqlite3",
-            )
+            database=create_database(current_app.config)
         ).account_for_token(token)
     except Exception:
         return None
