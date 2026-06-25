@@ -139,7 +139,7 @@ Implemented now:
 - Operator-visible alert review workflow
 - Scenario Library selected scenario panel
 - About & Safety screen with references and future roadmap
-- SQLite persistence for backend alert and audit APIs
+- SQLite local fallback and Postgres production persistence for backend alert, audit, account, session, OAuth-state, safety checklist, and mission data
 - Bearer-token RBAC for viewer/operator/admin/ingest prototype roles
 - Map provider configuration endpoint
 - GeoJSON map layer endpoint for incident perimeter, mission geofence, and no-fly buffer overlays
@@ -156,6 +156,7 @@ Still mocked or placeholder:
 - Emergency stop hardware behavior
 - Authoritative production GIS/geofence source validation
 - Production identity provider and token lifecycle
+- Database migrations, backup/restore runbook, and data-retention policy
 
 ## License And Copying Notes
 

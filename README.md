@@ -24,11 +24,14 @@ The prototype is intended to look serious and operational while staying honest a
 
 - Frontend: Flutter web app in `flutter_app/`
 - Backend: Flask API in `backend/`
+- Production deployment: Render frontend + Render backend
+- Production database: Neon Postgres via Render `DATABASE_URL`
+- Local development database: SQLite fallback when `DATABASE_URL` is unset
 - Default mode: simulation and read-only connector status
 - Real hardware command dispatch: disabled
 - Mission commands in the UI: simulated only
 - Fire/smoke detections: mock events requiring human review
-- Audit log: local in-memory prototype log
+- Audit log: persisted through the backend store
 
 ## Features
 
@@ -65,7 +68,7 @@ Emergency Stop currently changes local and backend simulation safety state. It i
 
 ### Backend Persistence, Auth, And Integrations
 
-The backend now includes a SQLite-backed operations layer for public-safety prototype data:
+The backend includes a shared persistence layer for public-safety prototype data. Production uses Neon Postgres through `DATABASE_URL`; local development falls back to SQLite when `DATABASE_URL` is unset.
 
 - `GET /api/auth/session`
 - `GET /api/integrations/status`
@@ -82,6 +85,8 @@ The backend now includes a SQLite-backed operations layer for public-safety prot
 - `POST /api/commands/simulate`
 - `POST /api/integrations/px4-sitl/telemetry`
 - `POST /api/integrations/mavlink/telemetry`
+
+The persisted data includes operations alerts, audit entries, safety checklist state, missions, account users, sessions, and Google OAuth state. See [docs/NEON_POSTGRES.md](docs/NEON_POSTGRES.md) for deployment and verification details.
 
 `AUTH_REQUIRED=true` enables bearer-token RBAC. Prototype roles are `viewer`, `operator`, `admin`, and `ingest`. Flutter can pass a token with:
 
@@ -141,7 +146,7 @@ The current MVP uses mocked or placeholder data for:
 - Scenario catalog
 - Geofence validation, Remote ID hardware proof, airspace authority verification, and emergency stop hardware behavior
 
-The backend now persists alerts, audit entries, and an operator safety checklist in SQLite. It can ingest read-only PX4 SITL / MAVLink telemetry plus YOLO/thermal alert events. It exposes tile-provider config with attribution and tile usage policy at `/api/map/config`, GeoJSON geofence layers at `/api/map/geofence`, mission route / alert / drone map markers plus computed bounds at `/api/map/mission`, and user-triggered place/address search at `/api/map/search`. The planning map defaults to a satellite imagery basemap so the incident surface looks like a real-world map, while OpenStreetMap street tiles remain available as a switchable layer. The default search provider is OpenStreetMap Nominatim, proxied through Flask so the app can set an identifying User-Agent and later swap providers without changing Flutter. The Flutter map fits its initial viewport to backend bounds and can focus on a searched real-world place. Geofence, Remote ID, airspace approval, and emergency stop are represented as auditable checklist/simulation state, not validated aircraft or regulatory compliance. The Flutter app remains simulation-first and does not dispatch real aircraft commands.
+The backend persists alerts, audit entries, account sessions, Google OAuth state, and an operator safety checklist through SQLite locally or Neon Postgres in production. It can ingest read-only PX4 SITL / MAVLink telemetry plus YOLO/thermal alert events. It exposes tile-provider config with attribution and tile usage policy at `/api/map/config`, GeoJSON geofence layers at `/api/map/geofence`, mission route / alert / drone map markers plus computed bounds at `/api/map/mission`, and user-triggered place/address search at `/api/map/search`. The planning map defaults to a satellite imagery basemap so the incident surface looks like a real-world map, while OpenStreetMap street tiles remain available as a switchable layer. The default search provider is OpenStreetMap Nominatim, proxied through Flask so the app can set an identifying User-Agent and later swap providers without changing Flutter. The Flutter map fits its initial viewport to backend bounds and can focus on a searched real-world place. Geofence, Remote ID, airspace approval, and emergency stop are represented as auditable checklist/simulation state, not validated aircraft or regulatory compliance. The Flutter app remains simulation-first and does not dispatch real aircraft commands.
 
 ## Run Locally
 
@@ -247,6 +252,7 @@ Production environment values to verify in Render:
 DRONE_CONNECTOR=mock
 ALLOW_DJI_COMMANDS=false
 AUTH_REQUIRED=false
+DATABASE_URL=<Neon pooled Postgres connection string stored as a Render secret>
 GOOGLE_OAUTH_RUNTIME_CONFIG_ALLOWED=false
 GOOGLE_OAUTH_CLIENT_ID=<Google OAuth web client id>
 GOOGLE_OAUTH_CLIENT_SECRET=<Google OAuth web client secret>
@@ -259,6 +265,8 @@ If Render assigns different service URLs, update `FRONTEND_APP_URL`,
 `FIRE_DRONE_API_BASE`, and `GOOGLE_OAUTH_REDIRECT_URI` in Render. Also add the
 final callback URL to Google Cloud Console under the OAuth web client's
 authorized redirect URIs.
+
+The current production backend is configured to use Neon Postgres. Do not commit the Neon connection string. Store it only in Render as `DATABASE_URL`.
 
 ## Verification
 
@@ -304,10 +312,11 @@ Future work should proceed in simulation and read-only phases first:
 - YOLO fire/smoke detection API
 - Production GIS sources, terrain overlays, and authoritative airspace layers
 - Authentication, RBAC, secure deployment, and incident command workflow
-- Persistent audit log and backend alert review API
-- Persistent safety checklist for geofence, Remote ID, airspace approval, and emergency stop simulation state
+- Database migrations, backups, and data-retention policies for Neon Postgres
+- Persistent DJI runtime state beyond the current JSON-backed bridge files
 
 See [docs/FUTURE_INTEGRATION.md](docs/FUTURE_INTEGRATION.md).
+See [docs/PRODUCTION_READINESS_TASKS.md](docs/PRODUCTION_READINESS_TASKS.md) for the current optimization task list.
 
 ## Limitations
 
@@ -315,7 +324,7 @@ See [docs/FUTURE_INTEGRATION.md](docs/FUTURE_INTEGRATION.md).
 - Not certified for emergency response
 - Not a ground control station
 - No real aircraft command dispatch
-- SQLite persistence is prototype-grade, not incident-certified storage
+- Neon Postgres persistence is enabled in production, but migrations, backups, retention, and incident-certified storage controls are still future work
 - Satellite and OpenStreetMap basemaps plus backend GeoJSON geofence layers exist, but authoritative incident GIS and regulatory validation are still future work
 - Nominatim search is a free public lookup path for development and moderate manual use, not a production geocoding SLA
 - Safety checklist state is auditable, but does not prove regulatory or aircraft compliance
