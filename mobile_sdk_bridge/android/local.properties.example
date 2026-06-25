@@ -1,0 +1,5 @@
+# Copy to local.properties (gitignored). Do NOT commit real keys.
+sdk.dir=C\:\\Users\\YourName\\AppData\\Local\\Android\\Sdk
+
+# Phase B — DJI Mobile SDK V5 app key from https://developer.dji.com/
+# dji.app.key=your-dji-app-key-here

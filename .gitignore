@@ -79,6 +79,11 @@ unlinked_spec.ds
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
 *.jks
+mobile_sdk_bridge/android/.gradle/
+mobile_sdk_bridge/android/app/build/
+mobile_sdk_bridge/android/build/
+mobile_sdk_bridge/android/local.properties
+mobile_sdk_bridge/android/secrets.properties
 
 # iOS/XCode related
 **/ios/**/*.mode1v3
