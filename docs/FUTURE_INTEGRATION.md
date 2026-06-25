@@ -12,7 +12,8 @@ This document lists future integrations for AeroScout Command. The current produ
 
 Current progress:
 
-- Alert and audit persistence use SQLite through `OperationsStore`.
+- Production persistence uses Neon Postgres through Render `DATABASE_URL`; local development falls back to SQLite.
+- Alert, audit, mission, safety checklist, account user, session, and OAuth-state persistence use the shared backend database layer.
 - `AUTH_REQUIRED=true` enables bearer-token RBAC for viewer/operator/admin/ingest roles.
 - `/api/map/config` exposes tile-provider configuration without leaking secrets.
 - `/api/map/geofence` exposes backend GeoJSON incident perimeter, mission geofence, and no-fly buffer layers.
@@ -191,14 +192,15 @@ Future map work should add:
 
 Before any real incident workflow:
 
-- Add authentication
-- Add role-based access control
+- Enforce authentication in production
+- Enforce role-based access control in production
 - Separate viewer, reviewer, operator, admin, and incident commander roles
-- Move secrets to a secure backend secret store
+- Keep secrets in Render or a dedicated backend secret store
 - Require HTTPS
 - Add CSRF/session protections where applicable
 - Add structured audit logging
 - Add deployment environment separation
+- Add database migrations, backups, restore drills, and data-retention rules
 - Review logs for sensitive data leakage
 
 ## Phase 9: Incident Command Workflow
