@@ -163,6 +163,8 @@ Bad payloads are rejected with HTTP `400` and do not overwrite the last known va
 
 Use this path when DJI Pilot 2, DJI Dock, or a Cloud API worker can receive MQTT device-property topics. The website connection dialog can start the backend listener automatically. You can also run the worker manually:
 
+For **laptop → Render production relay**, see [DJI_CLOUD_PRODUCTION.md](DJI_CLOUD_PRODUCTION.md).
+
 ```bash
 cd backend
 source .venv/bin/activate

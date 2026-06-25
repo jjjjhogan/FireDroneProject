@@ -113,9 +113,20 @@ def _parse_args():
     parser.add_argument(
         "--no-tls",
         action="store_true",
-        help="Disable TLS for local Docker EMQX",
+        help="Disable TLS for local Docker EMQX (also set DJI_CLOUD_MQTT_USE_TLS=false in .env)",
     )
     return parser.parse_args()
+
+
+def _use_tls(args):
+    if args.no_tls:
+        return False
+    env_value = str(os.getenv("DJI_CLOUD_MQTT_USE_TLS", "")).strip().lower()
+    if env_value in {"0", "false", "no", "off"}:
+        return False
+    if env_value in {"1", "true", "yes", "on"}:
+        return True
+    return args.mqtt_port != 1883
 
 
 def _lerp(start, end, t):
@@ -203,15 +214,22 @@ def main():
         return 2
 
     topic = f"thing/product/{args.device_id}/osd"
-    client = mqtt.Client(client_id=f"firedrone-test-publisher-{args.device_id}")
+    use_tls = _use_tls(args)
+    callback_version = getattr(mqtt, "CallbackAPIVersion", None)
+    client_id = f"firedrone-test-publisher-{args.device_id}"
+    if callback_version is not None:
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id)
+    else:
+        client = mqtt.Client(client_id=client_id)
     if args.mqtt_username or args.mqtt_password:
         client.username_pw_set(args.mqtt_username, args.mqtt_password)
-    if not args.no_tls:
+    if use_tls:
         client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
 
     legs = len(FIRE_PERIMETER_MISSION) - 1
     loop_min = (legs * args.ticks_per_leg * args.interval) / 60
-    print(f"Connecting to mqtt://{host}:{args.mqtt_port} ...")
+    scheme = "mqtts" if use_tls else "mqtt"
+    print(f"Connecting to {scheme}://{host}:{args.mqtt_port} ...")
     print(
         f"Mission: {FIRE_PERIMETER_MISSION[0]['label']} -> "
         f"{FIRE_PERIMETER_MISSION[-1]['label']} "

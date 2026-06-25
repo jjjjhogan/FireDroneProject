@@ -3,6 +3,7 @@ import ssl
 import threading
 
 from app.dji.cloud_api import cloud_api_message_to_ingest_payload
+from app.dji.cloud_mqtt_relay import mqtt_reason_label, mqtt_reason_succeeded
 from app.dji.ingest import normalize_ingest_payload
 from app.dji.state_store import DjiStateStore, utc_now_iso
 
@@ -87,13 +88,16 @@ class CloudMqttBridgeManager:
         if use_tls:
             client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
 
-        def on_connect(client, userdata, flags, reason_code):
-            if int(reason_code) != 0:
+        def on_connect(client, userdata, flags, reason_code, properties=None):
+            del properties
+            if not mqtt_reason_succeeded(reason_code):
                 with self._lock:
                     self._status = {
                         **self._status,
                         "state": "connect-failed",
-                        "lastError": f"MQTT connect failed rc={reason_code}",
+                        "lastError": (
+                            f"MQTT connect failed rc={mqtt_reason_label(reason_code)}"
+                        ),
                     }
                 return
             for topic in topics:
