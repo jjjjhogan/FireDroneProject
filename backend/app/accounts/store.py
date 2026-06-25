@@ -3,12 +3,11 @@ import hmac
 import json
 import re
 import secrets
-import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from uuid import uuid4
 
+from app.db import Database, IntegrityError
 from app.dji.state_store import utc_now_iso
 
 
@@ -99,81 +98,97 @@ def _verify_password(password, encoded):
         return False
 
 
-class AccountStore:
-    def __init__(self, path):
-        self.path = Path(path)
+ACCOUNT_SCHEMA_STATEMENTS = [
+    """
+    create table if not exists accounts (
+      account_id text primary key,
+      email text not null unique,
+      display_name text not null,
+      organization text not null,
+      role text not null,
+      password_hash text not null,
+      data_json text not null,
+      created_at text not null,
+      updated_at text not null,
+      google_subject text,
+      avatar_url text,
+      auth_provider text not null default 'password'
+    )
+    """,
+    """
+    create table if not exists account_sessions (
+      token_hash text primary key,
+      account_id text not null,
+      created_at text not null,
+      expires_at text not null,
+      revoked_at text,
+      foreign key(account_id) references accounts(account_id)
+    )
+    """,
+    """
+    create table if not exists oauth_states (
+      state_hash text primary key,
+      provider text not null,
+      return_url text not null,
+      created_at text not null,
+      expires_at text not null,
+      consumed_at text
+    )
+    """,
+    """
+    create table if not exists account_login_codes (
+      code_hash text primary key,
+      account_id text not null,
+      created_at text not null,
+      expires_at text not null,
+      consumed_at text,
+      foreign key(account_id) references accounts(account_id)
+    )
+    """,
+]
 
-    def _connect(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(self.path)
-        connection.row_factory = sqlite3.Row
-        self._ensure_schema(connection)
-        return connection
+
+class AccountStore:
+    def __init__(self, database=None, path=None):
+        if isinstance(database, Database):
+            self.db = database
+        elif isinstance(database, str) and path is None:
+            self.db = Database(sqlite_path=database)
+        elif path is not None:
+            self.db = Database(sqlite_path=path)
+        else:
+            self.db = Database(sqlite_path="instance/operations.sqlite3")
+        self._schema_initialized = False
 
     @contextmanager
     def _session(self):
-        connection = self._connect()
-        try:
+        with self.db.session() as connection:
+            if not self._schema_initialized:
+                self._ensure_schema(connection)
+                self._schema_initialized = True
             yield connection
-        finally:
-            connection.close()
 
     def _ensure_schema(self, connection):
-        connection.executescript(
-            """
-            create table if not exists accounts (
-              account_id text primary key,
-              email text not null unique,
-              display_name text not null,
-              organization text not null,
-              role text not null,
-              password_hash text not null,
-              data_json text not null,
-              created_at text not null,
-              updated_at text not null
-            );
-
-            create table if not exists account_sessions (
-              token_hash text primary key,
-              account_id text not null,
-              created_at text not null,
-              expires_at text not null,
-              revoked_at text,
-              foreign key(account_id) references accounts(account_id)
-            );
-
-            create table if not exists oauth_states (
-              state_hash text primary key,
-              provider text not null,
-              return_url text not null,
-              created_at text not null,
-              expires_at text not null,
-              consumed_at text
-            );
-
-            create table if not exists account_login_codes (
-              code_hash text primary key,
-              account_id text not null,
-              created_at text not null,
-              expires_at text not null,
-              consumed_at text,
-              foreign key(account_id) references accounts(account_id)
-            );
-            """
-        )
+        for statement in ACCOUNT_SCHEMA_STATEMENTS:
+            connection.execute(statement)
         self._ensure_account_columns(connection)
         connection.commit()
 
     def _ensure_account_columns(self, connection):
-        rows = connection.execute("pragma table_info(accounts)").fetchall()
-        existing = {row["name"] for row in rows}
+        existing = connection.table_columns("accounts")
         columns = {
             "google_subject": "text",
             "avatar_url": "text",
             "auth_provider": "text not null default 'password'",
         }
         for name, definition in columns.items():
-            if name not in existing:
+            if name in existing:
+                continue
+            if connection._dialect == "postgresql":
+                connection.execute(
+                    f"alter table accounts add column if not exists {name} {definition}"
+                )
+            else:
                 connection.execute(
                     f"alter table accounts add column {name} {definition}"
                 )
@@ -231,7 +246,7 @@ class AccountStore:
                     ),
                 )
                 connection.commit()
-        except sqlite3.IntegrityError as error:
+        except IntegrityError as error:
             if "unique" in str(error).lower():
                 raise DuplicateAccountError("Account already exists") from error
             raise

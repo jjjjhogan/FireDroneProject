@@ -19,6 +19,15 @@ def _env_path(key: str, default: Path) -> str:
     return _env(key, str(default))
 
 
+def _normalize_database_url(url: str) -> str:
+    value = url.strip()
+    if not value:
+        return ""
+    if value.startswith("postgres://"):
+        return "postgresql://" + value[len("postgres://") :]
+    return value
+
+
 class Config:
     SECRET_KEY = _env("SECRET_KEY", "dev-secret-key-change-in-production")
     DEBUG = _env("FLASK_DEBUG", "true").lower() == "true"
@@ -57,6 +66,7 @@ class Config:
         "APP_DATABASE_FILE",
         BASE_DIR / "instance" / "operations.sqlite3",
     )
+    DATABASE_URL = _normalize_database_url(_env("DATABASE_URL"))
     AUTH_REQUIRED = _env("AUTH_REQUIRED", "false").lower() == "true"
     PUBLIC_SAFETY_TOKENS = _env("PUBLIC_SAFETY_TOKENS")
     FRONTEND_APP_URL = _env("FRONTEND_APP_URL", "http://127.0.0.1:8151/")

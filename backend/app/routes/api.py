@@ -12,6 +12,7 @@ from app.accounts.store import (
     AuthenticationError,
     OAuthStateError,
 )
+from app.db import create_database
 from app.dji import create_dji_connector
 from app.dji.cloud_api import cloud_api_message_to_ingest_payload
 from app.dji.cloud_bridge import cloud_bridge_manager, try_start_cloud_bridge
@@ -79,22 +80,16 @@ def _dji_state_store():
     )
 
 
+def _database():
+    return create_database(current_app.config)
+
+
 def _operations_store():
-    return OperationsStore(
-        current_app.config.get(
-            "APP_DATABASE_FILE",
-            "instance/operations.sqlite3",
-        )
-    )
+    return OperationsStore(database=_database())
 
 
 def _account_store():
-    return AccountStore(
-        current_app.config.get(
-            "APP_DATABASE_FILE",
-            "instance/operations.sqlite3",
-        )
-    )
+    return AccountStore(database=_database())
 
 
 def _google_oauth_runtime_config_store():
@@ -862,7 +857,7 @@ def integrations_status(identity):
         },
         "persistence": {
             "enabled": True,
-            "engine": "sqlite",
+            "engine": _database().engine,
             "audit": "persistent",
             "alerts": "persistent",
         },
