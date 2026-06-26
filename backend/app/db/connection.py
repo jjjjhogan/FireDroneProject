@@ -83,10 +83,12 @@ class _ConnectionProxy:
 
     def executemany(self, sql, params_list):
         try:
-            self._connection.executemany(
-                _adapt_placeholders(sql, self._dialect),
-                params_list,
-            )
+            adapted_sql = _adapt_placeholders(sql, self._dialect)
+            if hasattr(self._connection, "executemany"):
+                self._connection.executemany(adapted_sql, params_list)
+            else:
+                for params in params_list:
+                    self._connection.execute(adapted_sql, params)
         except sqlite3.IntegrityError as error:
             raise IntegrityError(str(error)) from error
         except Exception as error:
