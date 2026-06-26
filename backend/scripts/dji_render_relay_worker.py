@@ -23,6 +23,7 @@ from app.dji.demo_ingest_worker import (
     demo_ingest_config_from_env,
     run_demo_ingest_worker,
 )
+from app.dji.demo_scenarios import DEFAULT_DEMO_SCENARIO_ID, scenario_ids
 
 
 def _load_env_file(path):
@@ -50,7 +51,19 @@ def _parse_demo_args(env_config):
     parser.add_argument("--api-base", default=env_config.api_base)
     parser.add_argument("--token", default=env_config.ingest_token)
     parser.add_argument("--device-id", default=env_config.device_id)
+    parser.add_argument(
+        "--scenario",
+        choices=scenario_ids(),
+        default=env_config.scenario_id or DEFAULT_DEMO_SCENARIO_ID,
+        help="Demo scenario route to publish.",
+    )
     parser.add_argument("--interval", type=float, default=env_config.interval_seconds)
+    parser.add_argument(
+        "--ticks-per-leg",
+        type=int,
+        default=env_config.ticks_per_leg,
+        help="OSD publishes per route leg.",
+    )
     parser.add_argument("--once", action="store_true", default=env_config.once)
     parser.add_argument("--verbose", action="store_true", default=env_config.verbose)
     parser.add_argument(
@@ -82,8 +95,9 @@ def main():
             ingest_token=str(args.token or env_config.ingest_token).strip(),
             api_base=str(args.api_base or env_config.api_base).strip(),
             device_id=str(args.device_id or env_config.device_id).strip(),
+            scenario_id=str(args.scenario or env_config.scenario_id).strip(),
             interval_seconds=max(1.0, float(args.interval)),
-            ticks_per_leg=env_config.ticks_per_leg,
+            ticks_per_leg=max(1, int(args.ticks_per_leg)),
             verbose=bool(args.verbose or env_config.verbose),
             once=bool(args.once or env_config.once),
         )

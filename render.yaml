@@ -79,6 +79,8 @@ services:
         sync: false
       - key: DJI_DEMO_DEVICE_ID
         value: demo-aircraft
+      - key: DJI_DEMO_SCENARIO
+        value: canyon-ridge
       - key: DJI_DEMO_INTERVAL_SECONDS
         value: "45"
       - key: DJI_CLOUD_API_MQTT_HOST

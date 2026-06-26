@@ -1,49 +1,22 @@
 import math
 
-# Min Mountains incident area — matches mission preview / map layers.
+from app.dji.demo_scenarios import DEFAULT_DEMO_SCENARIO_ID, get_demo_scenario
+
+
+def _waypoint_dict(point):
+    return {
+        "label": point.label,
+        "lat": point.lat,
+        "lng": point.lng,
+        "altitude_m": point.altitude_m,
+        "mode": point.mode,
+    }
+
+
+# Backward-compatible alias for tests and local MQTT scripts.
 FIRE_PERIMETER_MISSION = [
-    {
-        "label": "LZ Alpha",
-        "lat": 37.2064,
-        "lng": -119.5531,
-        "altitude_m": 92,
-        "mode": "takeoff",
-    },
-    {
-        "label": "North ridge thermal",
-        "lat": 37.2138,
-        "lng": -119.5414,
-        "altitude_m": 118,
-        "mode": "waypoint-flight",
-    },
-    {
-        "label": "Eastern flank",
-        "lat": 37.2188,
-        "lng": -119.5324,
-        "altitude_m": 124,
-        "mode": "waypoint-flight",
-    },
-    {
-        "label": "Southern perimeter",
-        "lat": 37.2102,
-        "lng": -119.5256,
-        "altitude_m": 116,
-        "mode": "waypoint-flight",
-    },
-    {
-        "label": "Western containment",
-        "lat": 37.2048,
-        "lng": -119.5388,
-        "altitude_m": 108,
-        "mode": "hover-inspect",
-    },
-    {
-        "label": "RTL",
-        "lat": 37.2064,
-        "lng": -119.5531,
-        "altitude_m": 92,
-        "mode": "return-to-home",
-    },
+    _waypoint_dict(point)
+    for point in get_demo_scenario(DEFAULT_DEMO_SCENARIO_ID).waypoints
 ]
 
 
@@ -51,8 +24,9 @@ def _lerp(start, end, t):
     return start + (end - start) * t
 
 
-def mission_state(sequence, ticks_per_leg, waypoints=None):
-    waypoints = waypoints or FIRE_PERIMETER_MISSION
+def mission_state(sequence, ticks_per_leg, scenario_id=None, waypoints=None):
+    scenario = get_demo_scenario(scenario_id)
+    waypoints = waypoints or [_waypoint_dict(point) for point in scenario.waypoints]
     leg_count = len(waypoints) - 1
     loop_ticks = leg_count * ticks_per_leg
     tick = (sequence - 1) % loop_ticks
@@ -73,7 +47,7 @@ def mission_state(sequence, ticks_per_leg, waypoints=None):
     base_battery = 96 - (loops_completed * 14) - (tick * 0.35)
     battery_pct = max(22, round(base_battery))
 
-    route_progress = round(((tick + leg_index * ticks_per_leg) / loop_ticks) * 100)
+    route_progress = round((tick / max(loop_ticks - 1, 1)) * 100)
     mode = end["mode"] if t > 0.55 else start["mode"]
     link_quality = max(68, min(99, 94 - abs(math.sin(sequence * 0.4)) * 12))
 
@@ -91,14 +65,20 @@ def mission_state(sequence, ticks_per_leg, waypoints=None):
     }
 
 
-def build_cloud_osd_payload(device_id, sequence, ticks_per_leg=6):
-    state = mission_state(sequence, ticks_per_leg)
+def build_cloud_osd_payload(
+    device_id,
+    sequence,
+    ticks_per_leg=6,
+    scenario_id=None,
+):
+    scenario = get_demo_scenario(scenario_id)
+    state = mission_state(sequence, ticks_per_leg, scenario.scenario_id)
     return {
         "data": {
             "device_sn": device_id,
             "device_id": device_id,
-            "device_name": "Demo Matrice Perimeter Unit",
-            "model": "DJI Matrice 30T",
+            "device_name": scenario.device_name,
+            "model": scenario.model,
             "latitude": round(state["lat"], 6),
             "longitude": round(state["lng"], 6),
             "height": state["altitude_m"],
@@ -106,8 +86,15 @@ def build_cloud_osd_payload(device_id, sequence, ticks_per_leg=6):
             "wireless_link": {"link_quality": state["link_quality"]},
             "mode_code": state["mode"],
             "route_progress": state["route_progress_pct"],
+            "wind_mph": scenario.wind_mph,
+            "temperature_f": scenario.temperature_f,
+            "fire_perimeter_risk": scenario.fire_perimeter_risk,
+            "scenario_id": scenario.scenario_id,
+            "scenario_name": scenario.title,
         },
         "_demo": {
+            "scenarioId": scenario.scenario_id,
+            "scenarioName": scenario.title,
             "leg": f"{state['leg_index']}/{state['leg_count']}",
             "waypoint": state["leg_label"],
             "routeProgressPct": state["route_progress_pct"],
