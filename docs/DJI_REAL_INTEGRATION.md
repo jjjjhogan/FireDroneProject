@@ -205,7 +205,10 @@ Implemented bridge targets:
 ```text
 POST /api/dji/ingest/mobile-sdk
 backend/scripts/post_mobile_sdk_state.py
+mobile_sdk_bridge/android/   # Phase A stub Android app
 ```
+
+See [MOBILE_SDK_BRIDGE.md](MOBILE_SDK_BRIDGE.md) for Android setup, local/production verification, and Phase B SDK integration notes.
 
 For local smoke testing without an Android build:
 
