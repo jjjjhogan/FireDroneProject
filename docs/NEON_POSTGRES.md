@@ -1,6 +1,16 @@
 # Neon Postgres on Render
 
-Production deployments should use **Neon Postgres** instead of SQLite. Render's web service filesystem is ephemeral — SQLite files are lost on redeploy.
+Production deployments use **Neon Postgres** instead of SQLite. Render's web service filesystem is ephemeral, so SQLite files are lost on redeploy.
+
+## Current production status
+
+- Render backend service: `firedrone-api`
+- Render frontend service: `firedrone-command`
+- Database provider: Neon Postgres
+- Render secret: `DATABASE_URL`
+- Verified: 2026-06-24 production backend returned `"persistence": { "engine": "postgresql", ... }`
+
+The Neon connection string is a secret. Keep it in Render or a secret manager, never in git, screenshots, or public logs.
 
 ## How it works
 
@@ -15,7 +25,7 @@ Both stores share one database URL.
 
 ## Render setup
 
-1. Create a [Neon](https://neon.tech) project (or Render Postgres if you prefer).
+1. Create a [Neon](https://neon.tech) project.
 2. Copy the connection string (`postgresql://...` or `postgres://...`).
 3. In Render → **firedrone-api** → **Environment**, add:
 
@@ -54,6 +64,14 @@ Look for `"persistence": { "engine": "postgresql", ... }`.
 ## Blueprint
 
 [`render.yaml`](../render.yaml) includes `DATABASE_URL` with `sync: false` so you paste the Neon secret in the Render dashboard (not committed to git).
+
+## Follow-up tasks
+
+- Add schema migrations before the data model grows further.
+- Add a Neon backup and restore runbook.
+- Add separate local/staging/production database environments.
+- Move remaining JSON-backed DJI runtime state to durable storage or a persistent volume.
+- Add a database-specific health endpoint that checks connectivity without exposing connection details.
 
 ## Notes
 
