@@ -96,6 +96,10 @@ Open **Live Simulator** and confirm fleet/telemetry update while the worker runs
 
 ## Step 2 — Forward to Render production
 
+For a **Render-hosted demo** (no laptop), see [DJI_CLOUD_RENDER_DEMO.md](DJI_CLOUD_RENDER_DEMO.md).
+
+### Laptop relay → Render API
+
 1. In Render → **firedrone-api** → **Environment**, add:
 
 ```env
