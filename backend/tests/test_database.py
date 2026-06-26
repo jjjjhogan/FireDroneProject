@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.db import Database, create_database
+from app.db.connection import _ConnectionProxy
 from app.ops.store import OperationsStore
 from app.accounts.store import AccountStore
 
@@ -55,6 +56,39 @@ class SqliteStoreIntegrationTest(unittest.TestCase):
         self.assertTrue(token.startswith("acct_"))
         self.assertEqual(account["email"], "ops@test.example")
         self.assertEqual(len(ops.list_audit()), 1)
+
+
+class ConnectionProxyTest(unittest.TestCase):
+    def test_postgres_executemany_uses_execute_when_driver_lacks_executemany(self):
+        class FakeCursor:
+            rowcount = 1
+
+        class FakePostgresConnection:
+            def __init__(self):
+                self.executed = []
+
+            def execute(self, sql, params=()):
+                self.executed.append((sql, params))
+                return FakeCursor()
+
+        connection = FakePostgresConnection()
+        proxy = _ConnectionProxy(connection, "postgresql")
+
+        proxy.executemany(
+            "insert into safety_checklist (key, status) values (?, ?)",
+            [
+                ("geofence", "pending"),
+                ("remoteId", "verified"),
+            ],
+        )
+
+        self.assertEqual(len(connection.executed), 2)
+        self.assertEqual(
+            connection.executed[0][0],
+            "insert into safety_checklist (key, status) values (%s, %s)",
+        )
+        self.assertEqual(connection.executed[0][1], ("geofence", "pending"))
+        self.assertEqual(connection.executed[1][1], ("remoteId", "verified"))
 
 
 if __name__ == "__main__":
