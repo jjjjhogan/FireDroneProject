@@ -1,5 +1,6 @@
 from app.dji.demo_scenarios import (
     get_demo_scenario,
+    infer_scenario_id_from_drones,
     scenario_alert_points,
     scenario_geofence_collection,
     scenario_map_center,
@@ -119,9 +120,9 @@ def active_scenario_id_from_state(state):
     bridge = state.get("bridge") or {}
     telemetry = state.get("telemetry") or {}
     scenario_id = bridge.get("scenarioId") or telemetry.get("scenarioId")
-    if not scenario_id:
-        return None
-    return str(scenario_id).strip().lower()
+    if scenario_id:
+        return str(scenario_id).strip().lower()
+    return infer_scenario_id_from_drones(state.get("drones"))
 
 
 def map_center_for_scenario(scenario_id=None):

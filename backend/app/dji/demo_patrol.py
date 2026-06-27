@@ -47,7 +47,10 @@ def mission_state(sequence, ticks_per_leg, scenario_id=None, waypoints=None):
     base_battery = 96 - (loops_completed * 14) - (tick * 0.35)
     battery_pct = max(22, round(base_battery))
 
-    route_progress = round((tick / max(loop_ticks - 1, 1)) * 100)
+    route_progress = min(
+        100,
+        max(0, round((tick / max(loop_ticks - 1, 1)) * 100)),
+    )
     mode = end["mode"] if t > 0.55 else start["mode"]
     link_quality = max(68, min(99, 94 - abs(math.sin(sequence * 0.4)) * 12))
 

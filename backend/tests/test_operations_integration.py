@@ -324,6 +324,54 @@ class OpsIntegrationTest(unittest.TestCase):
         self.assertGreater(map_config["center"]["lat"], 38.5)
         self.assertLess(map_config["center"]["lng"], -109.4)
 
+    def test_map_layers_infer_scenario_from_live_drone_without_scenario_id(self):
+        from app.dji.state_store import DjiStateStore, utc_now_iso
+
+        store = DjiStateStore(str(self.dji_state_file), 300)
+        store.write_state(
+            {
+                "source": "mobile-sdk-bridge",
+                "receivedAt": utc_now_iso(),
+                "bridge": {
+                    "adapter": "mobile-sdk",
+                    "deviceId": "rc-pro-001",
+                    "appVersion": "0.1.0",
+                },
+                "drones": [
+                    {
+                        "id": "msdk-m3t-01",
+                        "name": "MSDK Field Unit",
+                        "model": "DJI Matrice 30T",
+                        "connection": "online",
+                        "batteryPct": 89,
+                        "signalPct": 93,
+                        "lat": 38.5836,
+                        "lng": -109.5352,
+                        "altitudeM": 168,
+                        "lastSeen": utc_now_iso(),
+                        "warnings": [],
+                    }
+                ],
+                "telemetry": {
+                    "activeDroneId": "msdk-m3t-01",
+                    "missionState": "device-online",
+                    "routeProgressPct": 17,
+                    "linkHealth": "stable",
+                },
+                "warnings": [],
+            }
+        )
+
+        mission = self.client.get(
+            "/api/map/mission",
+            headers=self.auth("viewer-token"),
+        ).get_json()
+        self.assertEqual(mission["scenarioId"], "colorado-plateau")
+        self.assertEqual(
+            mission["route"]["id"],
+            "colorado-plateau-perimeter-route",
+        )
+
     def test_integration_status_lists_persistence_adapters_and_safety(self):
         response = self.client.get(
             "/api/integrations/status",

@@ -366,3 +366,34 @@ def scenario_geofence_collection(scenario):
             },
         ],
     }
+
+
+def infer_scenario_id_from_coordinates(lat, lng):
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (TypeError, ValueError):
+        return None
+    if lat == 0 and lng == 0:
+        return None
+
+    best_id = None
+    best_score = float("inf")
+    for scenario_id, scenario in DEMO_SCENARIOS.items():
+        center = scenario_map_center(scenario)
+        score = (lat - center["lat"]) ** 2 + (lng - center["lng"]) ** 2
+        if score < best_score:
+            best_score = score
+            best_id = scenario_id
+    return best_id
+
+
+def infer_scenario_id_from_drones(drones):
+    for drone in drones or []:
+        scenario_id = infer_scenario_id_from_coordinates(
+            drone.get("lat"),
+            drone.get("lng"),
+        )
+        if scenario_id:
+            return scenario_id
+    return None
