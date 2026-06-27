@@ -10,10 +10,10 @@ from app.dji.cloud_mqtt_relay import (
     post_cloud_ingest,
 )
 from app.dji.demo_patrol import (
-    FIRE_PERIMETER_MISSION,
     build_cloud_osd_payload,
     cloud_osd_topic,
 )
+from app.dji.demo_scenarios import get_demo_scenario, scenario_ids
 
 
 @dataclass
@@ -21,6 +21,7 @@ class DemoIngestConfig:
     ingest_token: str
     api_base: str = "http://127.0.0.1:5000/api"
     device_id: str = "demo-aircraft"
+    scenario_id: str = "canyon-ridge"
     interval_seconds: float = 45.0
     ticks_per_leg: int = 6
     http_timeout_seconds: float = 8.0
@@ -43,6 +44,7 @@ def demo_ingest_config_from_env():
             os.getenv("FIRE_DRONE_API_BASE", "http://127.0.0.1:5000/api")
         ).strip(),
         device_id=str(os.getenv("DJI_DEMO_DEVICE_ID", "demo-aircraft")).strip(),
+        scenario_id=str(os.getenv("DJI_DEMO_SCENARIO", "canyon-ridge")).strip(),
         interval_seconds=float(os.getenv("DJI_DEMO_INTERVAL_SECONDS", "45")),
         ticks_per_leg=int(os.getenv("DJI_DEMO_TICKS_PER_LEG", "6")),
         verbose=_env_bool("DJI_DEMO_VERBOSE"),
@@ -58,6 +60,12 @@ def validate_demo_config(config: DemoIngestConfig) -> list[str]:
         errors.append("FIRE_DRONE_API_BASE or --api-base is required")
     if not config.device_id:
         errors.append("DJI_DEMO_DEVICE_ID or --device-id is required")
+    if not config.scenario_id:
+        errors.append("DJI_DEMO_SCENARIO or --scenario is required")
+    elif config.scenario_id not in scenario_ids():
+        errors.append(
+            "DJI_DEMO_SCENARIO must be one of: " + ", ".join(scenario_ids())
+        )
     if config.interval_seconds < 1:
         errors.append("interval must be at least 1 second")
     return errors
@@ -76,12 +84,14 @@ def run_demo_ingest_worker(config: DemoIngestConfig):
         verbose=config.verbose,
     )
     topic = cloud_osd_topic(config.device_id)
-    legs = len(FIRE_PERIMETER_MISSION) - 1
+    scenario = get_demo_scenario(config.scenario_id)
+    legs = len(scenario.waypoints) - 1
     loop_min = (legs * config.ticks_per_leg * config.interval_seconds) / 60
 
     logger.info(
         f"[demo] HTTP patrol ingest -> {config.api_base} "
-        f"device={config.device_id} interval={config.interval_seconds}s "
+        f"scenario={scenario.scenario_id} device={config.device_id} "
+        f"interval={config.interval_seconds}s "
         f"(~{loop_min:.0f} min/loop, no MQTT broker required)"
     )
 
@@ -94,6 +104,7 @@ def run_demo_ingest_worker(config: DemoIngestConfig):
                 config.device_id,
                 sequence,
                 config.ticks_per_leg,
+                scenario.scenario_id,
             )
             demo = payload.pop("_demo", {})
             stats.last_topic = topic
@@ -113,6 +124,7 @@ def run_demo_ingest_worker(config: DemoIngestConfig):
                     logger.info(
                         f"[demo] posted #{sequence} HTTP {status} "
                         f"({data['latitude']:.4f}, {data['longitude']:.4f}) "
+                        f"{demo.get('scenarioName', scenario.title)} "
                         f"[{demo.get('waypoint', '?')} "
                         f"{demo.get('routeProgressPct', 0)}%] "
                         f"{response_body[:120]}"

@@ -49,6 +49,7 @@ Other defaults (already in blueprint):
 DJI_DEMO_INGEST=true
 FIRE_DRONE_API_BASE=https://firedrone-api.onrender.com/api
 DJI_DEMO_DEVICE_ID=demo-aircraft
+DJI_DEMO_SCENARIO=canyon-ridge
 DJI_DEMO_INTERVAL_SECONDS=45
 ```
 
@@ -89,6 +90,32 @@ $env:DJI_INGEST_TOKEN="your-render-token"
 $env:DJI_DEMO_INGEST="true"
 $env:FIRE_DRONE_API_BASE="https://firedrone-api.onrender.com/api"
 python scripts/dji_render_relay_worker.py --verbose
+```
+
+## Scenario-specific demo workers
+
+For demos, run the worker that matches the scenario selected in the Live Simulator.
+All scripts use the same `DJI_INGEST_TOKEN` and `FIRE_DRONE_API_BASE` env vars.
+
+```bash
+python scripts/dji_demo_canyon_ridge_worker.py --verbose
+python scripts/dji_demo_santa_cruz_fog_worker.py --verbose
+python scripts/dji_demo_yukon_boreal_worker.py --verbose
+python scripts/dji_demo_colorado_plateau_worker.py --verbose
+python scripts/dji_demo_sonoran_dust_front_worker.py --verbose
+python scripts/dji_demo_plains_wind_run_worker.py --verbose
+python scripts/dji_demo_sierra_foothills_wui_worker.py --verbose
+python scripts/dji_demo_gulf_coast_fuel_belt_worker.py --verbose
+python scripts/dji_demo_cascade_high_country_worker.py --verbose
+python scripts/dji_demo_everglades_peat_margin_worker.py --verbose
+```
+
+The generic Render entrypoint can also switch scenarios without changing the
+start command:
+
+```bash
+DJI_DEMO_SCENARIO=santa-cruz-fog python scripts/dji_render_relay_worker.py --verbose
+python scripts/dji_render_relay_worker.py --scenario colorado-plateau --verbose
 ```
 
 ## Switch to real DJI MQTT later
