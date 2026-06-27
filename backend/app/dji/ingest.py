@@ -74,7 +74,7 @@ def _normalize_bridge(raw_bridge, errors):
     if not isinstance(raw_bridge, dict):
         errors.append("bridge must be an object")
         raw_bridge = {}
-    return {
+    bridge = {
         "adapter": _clean_string(
             raw_bridge.get("adapter"),
             default="operator-bridge",
@@ -83,6 +83,13 @@ def _normalize_bridge(raw_bridge, errors):
         "deviceId": _clean_string(raw_bridge.get("deviceId"), max_length=120),
         "appVersion": _clean_string(raw_bridge.get("appVersion"), max_length=60),
     }
+    scenario_id = _clean_string(raw_bridge.get("scenarioId"), max_length=80)
+    scenario_name = _clean_string(raw_bridge.get("scenarioName"), max_length=120)
+    if scenario_id:
+        bridge["scenarioId"] = scenario_id
+    if scenario_name:
+        bridge["scenarioName"] = scenario_name
+    return bridge
 
 
 def _normalize_drone(raw_drone, index, received_at, errors):
@@ -194,6 +201,12 @@ def _normalize_telemetry(raw_telemetry, errors):
             max_length=80,
         ),
     }
+    scenario_id = _clean_string(raw_telemetry.get("scenarioId"), max_length=80)
+    scenario_name = _clean_string(raw_telemetry.get("scenarioName"), max_length=120)
+    if scenario_id:
+        telemetry["scenarioId"] = scenario_id
+    if scenario_name:
+        telemetry["scenarioName"] = scenario_name
     return telemetry
 
 

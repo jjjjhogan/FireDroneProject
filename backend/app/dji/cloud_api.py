@@ -120,6 +120,12 @@ def cloud_api_message_to_ingest_payload(payload):
             "adapter": "cloud-api-mqtt",
             "deviceId": gateway_sn,
             "appVersion": str(_first(message, [("method",), ("bid",)], "")),
+            "scenarioId": str(
+                _first(data, [("scenario_id",), ("scenarioId",)], "")
+            ),
+            "scenarioName": str(
+                _first(data, [("scenario_name",), ("scenarioName",)], "")
+            ),
         },
         "drones": [
             {
@@ -176,6 +182,12 @@ def cloud_api_message_to_ingest_payload(payload):
             ),
             "firePerimeterRisk": str(
                 _first(data, [("fire_perimeter_risk",), ("firePerimeterRisk",)], "unknown")
+            ),
+            "scenarioId": str(
+                _first(data, [("scenario_id",), ("scenarioId",)], "")
+            ),
+            "scenarioName": str(
+                _first(data, [("scenario_name",), ("scenarioName",)], "")
             ),
             "linkHealth": "stable" if signal_pct > 0 else "unknown",
         },

@@ -1,3 +1,12 @@
+from app.dji.demo_scenarios import (
+    get_demo_scenario,
+    scenario_alert_points,
+    scenario_geofence_collection,
+    scenario_map_center,
+    scenario_mission_route,
+)
+
+
 MAP_CENTER = {
     "lat": 37.2110,
     "lng": -119.5400,
@@ -104,17 +113,51 @@ MISSION_DRONE_MARKERS = [
 ]
 
 
-def mission_map_layer(alerts=None, drones=None):
-    mission_alerts = _mission_alerts(alerts or [])
+def active_scenario_id_from_state(state):
+    if not state:
+        return None
+    bridge = state.get("bridge") or {}
+    telemetry = state.get("telemetry") or {}
+    scenario_id = bridge.get("scenarioId") or telemetry.get("scenarioId")
+    if not scenario_id:
+        return None
+    return str(scenario_id).strip().lower()
+
+
+def map_center_for_scenario(scenario_id=None):
+    if scenario_id:
+        return scenario_map_center(get_demo_scenario(scenario_id))
+    return MAP_CENTER
+
+
+def geofence_map_layer(scenario_id=None):
+    if scenario_id:
+        return scenario_geofence_collection(get_demo_scenario(scenario_id))
+    return GEOFENCE_FEATURE_COLLECTION
+
+
+def mission_map_layer(alerts=None, drones=None, scenario_id=None):
+    if scenario_id:
+        scenario = get_demo_scenario(scenario_id)
+        route = scenario_mission_route(scenario)
+        seed_alerts = scenario_alert_points(scenario)
+    else:
+        route = MISSION_ROUTE
+        seed_alerts = MISSION_ALERT_POINTS
+
+    mission_alerts = _mission_alerts(alerts or [], seed_alerts)
     mission_drones = _mission_drones(drones or [])
-    return {
+    payload = {
         "source": "backend-mission-gis",
         "updatedAt": "2026-06-12T18:00:00+00:00",
-        "route": MISSION_ROUTE,
+        "route": route,
         "alerts": mission_alerts,
         "drones": mission_drones,
-        "bounds": _mission_bounds(MISSION_ROUTE["points"], mission_alerts, mission_drones),
+        "bounds": _mission_bounds(route["points"], mission_alerts, mission_drones),
     }
+    if scenario_id:
+        payload["scenarioId"] = scenario_id
+    return payload
 
 
 def _mission_bounds(route_points, alerts, drones):
@@ -146,9 +189,10 @@ def _mission_bounds(route_points, alerts, drones):
     }
 
 
-def _mission_alerts(alerts):
+def _mission_alerts(alerts, seed_alerts=None):
+    fallback_alerts = seed_alerts or MISSION_ALERT_POINTS
     if not alerts:
-        return MISSION_ALERT_POINTS
+        return fallback_alerts
     mission_alerts = []
     for alert in alerts:
         if alert.get("lat") is None or alert.get("lon") is None:
@@ -168,7 +212,7 @@ def _mission_alerts(alerts):
                 "status": alert.get("status", "Unconfirmed"),
             }
         )
-    return mission_alerts or MISSION_ALERT_POINTS
+    return mission_alerts or fallback_alerts
 
 
 def _mission_drones(drones):

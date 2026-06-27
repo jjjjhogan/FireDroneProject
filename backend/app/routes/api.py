@@ -27,7 +27,12 @@ from app.ops import (
     simulate_command,
 )
 from app.ops.analytics import ANALYTICS_SUMMARY, analytics_graphs_payload
-from app.ops.map_layers import GEOFENCE_FEATURE_COLLECTION, MAP_CENTER, mission_map_layer
+from app.ops.map_layers import (
+    active_scenario_id_from_state,
+    geofence_map_layer,
+    map_center_for_scenario,
+    mission_map_layer,
+)
 from app.ops.map_search import MapSearchError, search_nominatim_places
 from app.routes import api_bp
 from app.security import require_roles
@@ -78,6 +83,14 @@ def _dji_state_store():
         current_app.config.get("DJI_STATE_FILE", "instance/dji_state.json"),
         current_app.config.get("DJI_TELEMETRY_TTL_SECONDS", 300),
     )
+
+
+def _active_map_scenario_id():
+    state_store = _dji_state_store()
+    state = state_store.read()
+    if not state_store.is_fresh(state):
+        return None
+    return active_scenario_id_from_state(state)
 
 
 def _database():
@@ -679,7 +692,7 @@ def map_config(identity):
 @api_bp.route("/map/geofence", methods=["GET"])
 @require_roles("viewer")
 def map_geofence(identity):
-    return GEOFENCE_FEATURE_COLLECTION
+    return geofence_map_layer(scenario_id=_active_map_scenario_id())
 
 
 @api_bp.route("/map/mission", methods=["GET"])
@@ -688,7 +701,11 @@ def map_mission(identity):
     state_store = _dji_state_store()
     state = state_store.read()
     drones = state.get("drones") if state_store.is_fresh(state) else []
-    return mission_map_layer(alerts=_operations_store().list_alerts(), drones=drones)
+    return mission_map_layer(
+        alerts=_operations_store().list_alerts(),
+        drones=drones,
+        scenario_id=_active_map_scenario_id(),
+    )
 
 
 @api_bp.route("/map/search", methods=["GET"])
@@ -771,7 +788,7 @@ def _public_map_config():
         "tilePolicy": _tile_policy(provider, tile_url, requires_api_key),
         "defaultBasemap": default_basemap,
         "basemaps": basemaps,
-        "center": MAP_CENTER,
+        "center": map_center_for_scenario(_active_map_scenario_id()),
         "incidentLayerStatus": "geojson",
         "geofenceLayerStatus": "geojson",
         "geofenceLayerEndpoint": "/api/map/geofence",

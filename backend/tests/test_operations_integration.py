@@ -250,6 +250,80 @@ class OpsIntegrationTest(unittest.TestCase):
         self.assertGreater(first_route_point["lat"], 0)
         self.assertIn("altitudeM", first_route_point)
 
+    def test_map_layers_follow_active_demo_scenario_from_dji_ingest(self):
+        from app.dji.state_store import DjiStateStore, utc_now_iso
+
+        store = DjiStateStore(str(self.dji_state_file), 300)
+        store.write_state(
+            {
+                "source": "dji-cloud-api",
+                "receivedAt": utc_now_iso(),
+                "bridge": {
+                    "adapter": "cloud-api-mqtt",
+                    "deviceId": "demo-aircraft",
+                    "scenarioId": "colorado-plateau",
+                    "scenarioName": "Colorado Plateau Watch",
+                },
+                "drones": [
+                    {
+                        "id": "demo-aircraft",
+                        "name": "Demo Plateau Watch Unit",
+                        "model": "DJI Matrice 30T",
+                        "connection": "online",
+                        "batteryPct": 84,
+                        "signalPct": 88,
+                        "lat": 38.5836,
+                        "lng": -109.5352,
+                        "altitudeM": 168,
+                        "lastSeen": utc_now_iso(),
+                        "warnings": [],
+                    }
+                ],
+                "telemetry": {
+                    "activeDroneId": "demo-aircraft",
+                    "missionState": "waypoint-flight",
+                    "routeProgressPct": 42,
+                    "windMph": 25,
+                    "temperatureF": 91,
+                    "firePerimeterRisk": "wind-corridor",
+                    "scenarioId": "colorado-plateau",
+                    "scenarioName": "Colorado Plateau Watch",
+                    "linkHealth": "stable",
+                },
+                "warnings": [],
+            }
+        )
+
+        mission = self.client.get(
+            "/api/map/mission",
+            headers=self.auth("viewer-token"),
+        ).get_json()
+        self.assertEqual(mission["scenarioId"], "colorado-plateau")
+        self.assertEqual(
+            mission["route"]["id"],
+            "colorado-plateau-perimeter-route",
+        )
+        self.assertGreater(mission["route"]["points"][0]["lat"], 38.5)
+        self.assertLess(mission["route"]["points"][0]["lng"], -109.4)
+        self.assertGreater(mission["bounds"]["north"], 38.5)
+        self.assertLess(mission["bounds"]["south"], 38.6)
+
+        geofence = self.client.get(
+            "/api/map/geofence",
+            headers=self.auth("viewer-token"),
+        ).get_json()
+        self.assertEqual(geofence["scenarioId"], "colorado-plateau")
+        first_coord = geofence["features"][0]["geometry"]["coordinates"][0][0]
+        self.assertLess(first_coord[0], -109.0)
+        self.assertGreater(first_coord[1], 38.0)
+
+        map_config = self.client.get(
+            "/api/map/config",
+            headers=self.auth("viewer-token"),
+        ).get_json()
+        self.assertGreater(map_config["center"]["lat"], 38.5)
+        self.assertLess(map_config["center"]["lng"], -109.4)
+
     def test_integration_status_lists_persistence_adapters_and_safety(self):
         response = self.client.get(
             "/api/integrations/status",

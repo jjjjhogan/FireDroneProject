@@ -218,3 +218,151 @@ def scenario_ids():
 def get_demo_scenario(scenario_id=None):
     key = str(scenario_id or DEFAULT_DEMO_SCENARIO_ID).strip().lower()
     return DEMO_SCENARIOS.get(key, DEMO_SCENARIOS[DEFAULT_DEMO_SCENARIO_ID])
+
+
+_WAYPOINT_ACTIONS = {
+    "takeoff": "Launch and link check",
+    "waypoint-flight": "Patrol segment",
+    "hover-inspect": "Inspect hazard corridor",
+    "return-to-home": "Return to launch",
+}
+
+_ALERT_TYPES = ("thermal", "smoke", "fire")
+_ALERT_SEVERITIES = ("high", "medium", "critical")
+
+
+def scenario_map_center(scenario):
+    lats = [point.lat for point in scenario.waypoints]
+    lngs = [point.lng for point in scenario.waypoints]
+    return {
+        "lat": round(sum(lats) / len(lats), 4),
+        "lng": round(sum(lngs) / len(lngs), 4),
+        "zoom": 13,
+    }
+
+
+def scenario_mission_route(scenario):
+    return {
+        "id": f"{scenario.scenario_id}-perimeter-route",
+        "name": f"{scenario.title} patrol",
+        "source": "demo-scenario-planner",
+        "points": [
+            {
+                "label": point.label,
+                "lat": point.lat,
+                "lng": point.lng,
+                "altitudeM": round(point.altitude_m),
+                "action": _WAYPOINT_ACTIONS.get(point.mode, "Patrol segment"),
+            }
+            for point in scenario.waypoints
+        ],
+    }
+
+
+def scenario_alert_points(scenario):
+    patrol_points = [
+        point
+        for point in scenario.waypoints
+        if point.mode != "return-to-home" and point.label.lower() != "rtl"
+    ][1:4]
+    alerts = []
+    for index, point in enumerate(patrol_points):
+        alerts.append(
+            {
+                "id": f"{scenario.scenario_id}-{_ALERT_TYPES[index % 3]}",
+                "label": f"{point.label} watch point",
+                "type": _ALERT_TYPES[index % 3],
+                "severity": _ALERT_SEVERITIES[index % 3],
+                "confidence": round(0.9 - (index * 0.04), 2),
+                "lat": point.lat,
+                "lng": point.lng,
+                "source": "demo-scenario-gis-seed",
+            }
+        )
+    return alerts
+
+
+def _bbox_from_waypoints(waypoints, lat_pad, lng_pad):
+    lats = [point.lat for point in waypoints]
+    lngs = [point.lng for point in waypoints]
+    return {
+        "south": min(lats) - lat_pad,
+        "north": max(lats) + lat_pad,
+        "west": min(lngs) - lng_pad,
+        "east": max(lngs) + lng_pad,
+    }
+
+
+def _polygon_ring(bbox):
+    return [
+        [bbox["west"], bbox["south"]],
+        [bbox["west"], bbox["north"]],
+        [bbox["east"], bbox["north"]],
+        [bbox["east"], bbox["south"]],
+        [bbox["west"], bbox["south"]],
+    ]
+
+
+def scenario_geofence_collection(scenario):
+    perimeter = _bbox_from_waypoints(scenario.waypoints, 0.008, 0.012)
+    mission = _bbox_from_waypoints(scenario.waypoints, 0.018, 0.024)
+    corridor = _bbox_from_waypoints(scenario.waypoints[1:4], 0.004, 0.008)
+    return {
+        "type": "FeatureCollection",
+        "source": "demo-scenario-gis",
+        "scenarioId": scenario.scenario_id,
+        "updatedAt": "2026-06-18T00:00:00+00:00",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "id": f"incident-{scenario.scenario_id}",
+                    "name": f"{scenario.title} perimeter",
+                    "layerType": "incident_perimeter",
+                    "status": "active",
+                    "source": "demo-scenario-gis",
+                    "strokeColor": "#ef553b",
+                    "fillColor": "#ef553b",
+                    "fillOpacity": 0.22,
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [_polygon_ring(perimeter)],
+                },
+            },
+            {
+                "type": "Feature",
+                "properties": {
+                    "id": f"mission-geofence-{scenario.scenario_id}",
+                    "name": "Mission geofence",
+                    "layerType": "mission_geofence",
+                    "status": "operator_review_required",
+                    "source": "demo-scenario-gis",
+                    "strokeColor": "#22b7ae",
+                    "fillColor": "#22b7ae",
+                    "fillOpacity": 0.10,
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [_polygon_ring(mission)],
+                },
+            },
+            {
+                "type": "Feature",
+                "properties": {
+                    "id": f"no-fly-{scenario.scenario_id}",
+                    "name": "Crewed aircraft corridor buffer",
+                    "layerType": "no_fly_buffer",
+                    "status": "blocked",
+                    "source": "demo-scenario-gis",
+                    "strokeColor": "#f4c84a",
+                    "fillColor": "#f4c84a",
+                    "fillOpacity": 0.16,
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [_polygon_ring(corridor)],
+                },
+            },
+        ],
+    }
