@@ -23,6 +23,8 @@ Secrets must stay in Render or a dedicated secret manager. Do not commit the Neo
 - Configure production `firedrone-api` with Neon Postgres via Render `DATABASE_URL`.
 - Redeploy production backend after the database switch.
 - Verify production health and PostgreSQL persistence status.
+- Fix psycopg3 compatibility for `_ConnectionProxy.executemany()` after production checklist smoke test exposed a Postgres-only failure.
+- Verify production checklist data survives a Render restart.
 
 ## High Priority
 
@@ -44,6 +46,7 @@ Secrets must stay in Render or a dedicated secret manager. Do not commit the Neo
 - Add Sentry or similar backend/frontend error reporting with secret redaction.
 - Add Render deploy smoke tests that call health, account status, integrations status, map config, alerts, and audit endpoints.
 - Add a staging Neon branch for testing migrations before production.
+- Complete manual Google OAuth login -> logout -> login verification from the visible Google account chooser.
 
 ## Product And UX Optimizations
 
